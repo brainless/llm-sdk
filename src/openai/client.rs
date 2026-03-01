@@ -1,0 +1,272 @@
+use async_trait::async_trait;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+
+use crate::{
+    error::LlmError,
+    openai::{
+        tools::{OpenAIResponseToolFormat, OpenAIToolFormat},
+        types::{OpenAIErrorResponse, OpenAIResponseRequest, OpenAIResponseResponse},
+    },
+    tools::ProviderToolFormat,
+};
+
+/// OpenAI LLM client
+pub struct OpenAIClient {
+    api_key: String,
+    base_url: String,
+    http_client: reqwest::Client,
+}
+
+impl OpenAIClient {
+    /// Create a new OpenAI client with the given API key
+    pub fn new(api_key: impl Into<String>) -> Result<Self, LlmError> {
+        let api_key = api_key.into();
+        if api_key.is_empty() {
+            return Err(LlmError::authentication("API key cannot be empty"));
+        }
+
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(300)) // 5 minute timeout
+            .build()
+            .map_err(|e| LlmError::Network { source: e })?;
+
+        Ok(Self {
+            api_key,
+            base_url: "https://api.openai.com".to_string(),
+            http_client,
+        })
+    }
+
+    /// Set a custom base URL for the API
+    pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
+        self.base_url = url.into();
+        self
+    }
+
+    /// Create a response using the OpenAI Responses API
+    pub async fn create_response(
+        &self,
+        request: OpenAIResponseRequest,
+    ) -> Result<OpenAIResponseResponse, LlmError> {
+        let url = format!("{}/v1/responses", self.base_url);
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", self.api_key))
+                .map_err(|_| LlmError::authentication("Invalid API key format"))?,
+        );
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+        let response = self
+            .http_client
+            .post(&url)
+            .headers(headers)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| LlmError::Network { source: e })?;
+
+        let status = response.status();
+
+        if status.is_success() {
+            let openai_response: OpenAIResponseResponse = response
+                .json()
+                .await
+                .map_err(|e| LlmError::internal(format!("Failed to parse response: {}", e)))?;
+            Ok(openai_response)
+        } else {
+            // Extract retry-after header before consuming the response
+            let retry_after = if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                response
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|h| h.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok())
+            } else {
+                None
+            };
+
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            // Try to parse as OpenAI error response
+            if let Ok(error_response) = serde_json::from_str::<OpenAIErrorResponse>(&error_text) {
+                match status {
+                    reqwest::StatusCode::BAD_REQUEST => {
+                        Err(LlmError::invalid_request(error_response.error.message))
+                    }
+                    reqwest::StatusCode::UNAUTHORIZED => {
+                        Err(LlmError::authentication(error_response.error.message))
+                    }
+                    reqwest::StatusCode::FORBIDDEN => {
+                        Err(LlmError::authentication(error_response.error.message))
+                    }
+                    reqwest::StatusCode::NOT_FOUND => {
+                        Err(LlmError::api_error(404, error_response.error.message))
+                    }
+                    reqwest::StatusCode::PAYLOAD_TOO_LARGE => {
+                        Err(LlmError::invalid_request("Request too large"))
+                    }
+                    reqwest::StatusCode::TOO_MANY_REQUESTS => Err(LlmError::rate_limit(
+                        error_response.error.message,
+                        retry_after,
+                    )),
+                    reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
+                        Err(LlmError::api_error(500, error_response.error.message))
+                    }
+                    _ => Err(LlmError::api_error(
+                        status.as_u16(),
+                        error_response.error.message,
+                    )),
+                }
+            } else {
+                // Fallback for non-standard error responses
+                match status {
+                    reqwest::StatusCode::BAD_REQUEST => Err(LlmError::invalid_request(error_text)),
+                    reqwest::StatusCode::UNAUTHORIZED => Err(LlmError::authentication(error_text)),
+                    reqwest::StatusCode::FORBIDDEN => Err(LlmError::authentication(error_text)),
+                    reqwest::StatusCode::NOT_FOUND => Err(LlmError::api_error(404, error_text)),
+                    reqwest::StatusCode::PAYLOAD_TOO_LARGE => {
+                        Err(LlmError::invalid_request("Request too large"))
+                    }
+                    reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                        Err(LlmError::rate_limit(error_text, retry_after))
+                    }
+                    reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
+                        Err(LlmError::api_error(500, error_text))
+                    }
+                    _ => Err(LlmError::api_error(status.as_u16(), error_text)),
+                }
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl crate::client::LlmClient for OpenAIClient {
+    /// Uses the OpenAI Responses API for all models.
+    ///
+    /// The Responses API supports all GPT-5+ models including:
+    /// - `gpt-5`, `gpt-5-mini`, `gpt-5-nano` - Standard GPT-5 models
+    /// - `gpt-5.1`, `gpt-5.1-codex` - Extended reasoning models
+    /// - `gpt-5.1-*` - All GPT-5.1 variant models
+    ///
+    /// ## Features
+    /// - Extended reasoning capabilities for complex tasks
+    /// - Background processing for long-running tasks
+    /// - Conversation continuation via `previous_response_id`
+    /// - Prompt caching for efficiency
+    /// - Tool calling support
+    ///
+    /// Note: All messages are concatenated into a single input string for the Responses API.
+    async fn complete(
+        &self,
+        request: crate::types::CompletionRequest,
+    ) -> Result<crate::types::CompletionResponse, LlmError> {
+        let crate::types::CompletionRequest {
+            messages,
+            model,
+            system,
+            tools,
+            tool_choice,
+            // These fields are available in the request but not used by the Responses API
+            max_tokens: _,
+            temperature: _,
+            top_p: _,
+            stop_sequences: _,
+            response_format: _,
+        } = request;
+
+        // Use Responses API for all models
+        let mut input = messages
+            .into_iter()
+            .map(|msg| {
+                // For now, only support text content
+                msg.content
+                    .into_iter()
+                    .map(|block| match block {
+                        crate::types::ContentBlock::Text { text } => Ok(text),
+                        crate::types::ContentBlock::Image { .. } => Err(LlmError::invalid_request(
+                            "Image content not supported in Responses API",
+                        )),
+                    })
+                    .collect::<Result<Vec<String>, LlmError>>()
+            })
+            .collect::<Result<Vec<Vec<String>>, LlmError>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        if let Some(system_prompt) = system {
+            input = format!("System:\n{}\n\n{}", system_prompt, input);
+        }
+
+        let openai_request = crate::openai::types::OpenAIResponseRequest {
+            model,
+            input,
+            stream: None,
+            previous_response_id: None,
+            background: None,
+            prompt_cache_retention: None,
+            tools: tools.map(|tools| {
+                tools
+                    .into_iter()
+                    .map(|tool| OpenAIResponseToolFormat::to_response_tool(&tool))
+                    .collect()
+            }),
+            tool_choice: tool_choice
+                .map(|choice| OpenAIToolFormat::to_provider_tool_choice(&choice)),
+            parallel_tool_calls: None,
+        };
+
+        // Send request and convert response
+        let openai_response = self.create_response(openai_request).await?;
+
+        // Extract text from message output items
+        let mut text_content = String::new();
+        for item in &openai_response.output {
+            if item.item_type == "message" {
+                if let Some(content_blocks) = &item.content {
+                    for block in content_blocks {
+                        if block.content_type == "output_text" {
+                            text_content.push_str(&block.text);
+                        }
+                    }
+                }
+            }
+        }
+
+        let content = vec![crate::types::ContentBlock::Text { text: text_content }];
+
+        let response = crate::types::CompletionResponse {
+            content,
+            role: crate::types::Role::Assistant,
+            usage: crate::types::Usage {
+                input_tokens: openai_response
+                    .usage
+                    .input_tokens
+                    .unwrap_or(openai_response.usage.prompt_tokens.unwrap_or(0)),
+                output_tokens: openai_response
+                    .usage
+                    .output_tokens
+                    .unwrap_or(openai_response.usage.completion_tokens.unwrap_or(0)),
+            },
+            stop_reason: Some("completed".to_string()),
+            tool_calls: None, // TODO: Extract tool calls from OpenAI response function_call items
+        };
+
+        Ok(response)
+    }
+
+    fn provider_name(&self) -> &str {
+        crate::providers::OPENAI
+    }
+
+    fn model_name(&self) -> &str {
+        crate::models::openai::GPT_4O_ID // Default to GPT-4o
+    }
+}

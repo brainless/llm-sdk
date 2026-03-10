@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 
 use crate::{
@@ -38,6 +39,118 @@ impl OllamaClient {
         crate::ollama::builder::OllamaMessageBuilder::new(self)
     }
 
+    /// Check whether Ollama is running by hitting GET /
+    pub async fn is_running(&self) -> bool {
+        self.http_client
+            .get(&self.base_url)
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+    }
+
+    /// List all locally installed models via GET /api/tags
+    pub async fn list_models(
+        &self,
+    ) -> Result<Vec<crate::ollama::types::OllamaModelInfo>, LlmError> {
+        let url = format!("{}/api/tags", self.base_url);
+
+        let response = self
+            .http_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| LlmError::Network { source: e })?;
+
+        if response.status().is_success() {
+            let tags: crate::ollama::types::OllamaTagsResponse = response
+                .json()
+                .await
+                .map_err(|e| LlmError::internal(format!("Failed to parse tags response: {}", e)))?;
+            Ok(tags.models)
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(LlmError::api_error(status.as_u16(), error_text))
+        }
+    }
+
+    /// Pull (download) a model via POST /api/pull, reporting progress via a callback.
+    ///
+    /// The callback receives each `OllamaPullStatus` progress event as it arrives.
+    /// Returns when the pull is complete or an error occurs.
+    ///
+    /// # Example
+    /// ```no_run
+    /// client.pull_model("llama3.1", |status| {
+    ///     println!("{} {:?}/{:?}", status.status, status.completed, status.total);
+    /// }).await?;
+    /// ```
+    pub async fn pull_model(
+        &self,
+        model: impl Into<String>,
+        mut on_progress: impl FnMut(crate::ollama::types::OllamaPullStatus),
+    ) -> Result<(), LlmError> {
+        let url = format!("{}/api/pull", self.base_url);
+
+        let request = crate::ollama::types::OllamaPullRequest {
+            model: model.into(),
+            insecure: None,
+            stream: Some(true),
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| LlmError::Network { source: e })?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::api_error(status.as_u16(), error_text));
+        }
+
+        let mut stream = response.bytes_stream();
+        let mut buffer = String::new();
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| LlmError::Network { source: e })?;
+            buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+            // Each line is a complete JSON object
+            while let Some(newline_pos) = buffer.find('\n') {
+                let line = buffer[..newline_pos].trim().to_string();
+                buffer = buffer[newline_pos + 1..].to_string();
+
+                if line.is_empty() {
+                    continue;
+                }
+
+                match serde_json::from_str::<crate::ollama::types::OllamaPullStatus>(&line) {
+                    Ok(status) => on_progress(status),
+                    Err(e) => {
+                        return Err(LlmError::internal(format!(
+                            "Failed to parse pull status: {}",
+                            e
+                        )))
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Create a chat message using the Ollama /api/chat endpoint
     pub async fn create_chat(
         &self,
@@ -75,7 +188,10 @@ impl OllamaClient {
             // Debug: log the response if env var is set
             if std::env::var("NOCODO_LLM_LOG_PAYLOADS").is_ok() {
                 if let Ok(json_str) = serde_json::to_string_pretty(&ollama_response) {
-                    eprintln!("=== Ollama Response ===\n{}\n=== End Response ===", json_str);
+                    eprintln!(
+                        "=== Ollama Response ===\n{}\n=== End Response ===",
+                        json_str
+                    );
                 }
             }
 
@@ -187,7 +303,9 @@ impl crate::client::LlmClient for OllamaClient {
 
                     if let Some(mut params_obj) = params_value.as_object().cloned() {
                         params_obj.remove("$schema");
-                        if let Ok(cleaned_schema) = serde_json::from_value(serde_json::Value::Object(params_obj)) {
+                        if let Ok(cleaned_schema) =
+                            serde_json::from_value(serde_json::Value::Object(params_obj))
+                        {
                             ollama_tool.function.parameters = cleaned_schema;
                         }
                     }
@@ -197,10 +315,15 @@ impl crate::client::LlmClient for OllamaClient {
                 .collect::<Vec<_>>()
         });
 
-        let format = request.response_format.map(|rf| match rf {
-            crate::types::ResponseFormat::Text => None,
-            crate::types::ResponseFormat::JsonObject => Some(crate::ollama::types::OllamaFormat::json()),
-        }).flatten();
+        let format = request
+            .response_format
+            .map(|rf| match rf {
+                crate::types::ResponseFormat::Text => None,
+                crate::types::ResponseFormat::JsonObject => {
+                    Some(crate::ollama::types::OllamaFormat::json())
+                }
+            })
+            .flatten();
 
         let ollama_request = OllamaChatRequest {
             model: request.model,

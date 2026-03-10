@@ -206,8 +206,23 @@ pub mod ollama {
     pub const MINISTRAL_3_3B_ID: &str = "ministral-3:3b";
     pub const MINISTRAL_3_3B_NAME: &str = "Ministral 3 3B";
 
+    /// Ministral 3 8B (Ollama)
+    pub const MINISTRAL_3_8B_ID: &str = "ministral-3:8b";
+    pub const MINISTRAL_3_8B_NAME: &str = "Ministral 3 8B";
+
+    /// Qwen 3.5 4B (Ollama)
+    pub const QWEN_3_5_4B_ID: &str = "qwen3.5:4b";
+    pub const QWEN_3_5_4B_NAME: &str = "Qwen 3.5 4B";
+
+    /// Qwen 3.5 9B (Ollama)
+    pub const QWEN_3_5_9B_ID: &str = "qwen3.5:9b";
+    pub const QWEN_3_5_9B_NAME: &str = "Qwen 3.5 9B";
+
     // Backwards compatibility
     pub const MINISTRAL_3_3B: &str = MINISTRAL_3_3B_ID;
+    pub const MINISTRAL_3_8B: &str = MINISTRAL_3_8B_ID;
+    pub const QWEN_3_5_4B: &str = QWEN_3_5_4B_ID;
+    pub const QWEN_3_5_9B: &str = QWEN_3_5_9B_ID;
 }
 
 // Re-export for convenience

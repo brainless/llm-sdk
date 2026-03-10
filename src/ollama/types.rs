@@ -187,3 +187,57 @@ pub struct OllamaTokenLogprob {
     pub logprob: f32,
     pub bytes: Vec<i32>,
 }
+
+// --- Model management types ---
+
+/// A single model entry from GET /api/tags
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaModelInfo {
+    pub name: String,
+    pub model: String,
+    pub modified_at: String,
+    pub size: u64,
+    pub digest: String,
+    pub details: OllamaModelDetails,
+}
+
+/// Model details returned in tags and show responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaModelDetails {
+    pub parent_model: Option<String>,
+    pub format: String,
+    pub family: String,
+    pub families: Option<Vec<String>>,
+    pub parameter_size: String,
+    pub quantization_level: String,
+}
+
+/// Response from GET /api/tags
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaTagsResponse {
+    pub models: Vec<OllamaModelInfo>,
+}
+
+/// Request for POST /api/pull
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaPullRequest {
+    pub model: String,
+    /// If true, allows insecure connections to the library
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub insecure: Option<bool>,
+    /// Disable streaming (get single final response)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<bool>,
+}
+
+/// A single progress event from POST /api/pull (streaming)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaPullStatus {
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed: Option<u64>,
+}

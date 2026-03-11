@@ -169,37 +169,37 @@ impl crate::client::LlmClient for LlamaCppClient {
         let content_text = choice.message.content.clone().unwrap_or_default();
         let content = vec![crate::types::ContentBlock::Text { text: content_text }];
 
-        let usage = llama_response.usage.unwrap_or(crate::llama_cpp::types::LlamaCppUsage {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0,
-        });
+        let usage = llama_response
+            .usage
+            .unwrap_or(crate::llama_cpp::types::LlamaCppUsage {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                total_tokens: 0,
+            });
 
         let tool_calls = choice.message.tool_calls.as_ref().map(|calls| {
             calls
                 .iter()
                 .enumerate()
-                .map(|(idx, call)| {
-                    match call {
-                        crate::llama_cpp::types::LlamaCppToolCall::Simple { name, arguments } => {
-                            let arguments: serde_json::Value =
-                                serde_json::from_str(arguments).unwrap_or(serde_json::Value::Null);
-                            crate::tools::ToolCall::new(
-                                format!("llama_cpp_tool_call_{}", idx),
-                                name.clone(),
-                                arguments,
-                            )
-                        }
-                        crate::llama_cpp::types::LlamaCppToolCall::OpenAI(call) => {
-                            let arguments: serde_json::Value =
-                                serde_json::from_str(&call.function.arguments)
-                                    .unwrap_or(serde_json::Value::Null);
-                            crate::tools::ToolCall::new(
-                                call.id.clone(),
-                                call.function.name.clone(),
-                                arguments,
-                            )
-                        }
+                .map(|(idx, call)| match call {
+                    crate::llama_cpp::types::LlamaCppToolCall::Simple { name, arguments } => {
+                        let arguments: serde_json::Value =
+                            serde_json::from_str(arguments).unwrap_or(serde_json::Value::Null);
+                        crate::tools::ToolCall::new(
+                            format!("llama_cpp_tool_call_{}", idx),
+                            name.clone(),
+                            arguments,
+                        )
+                    }
+                    crate::llama_cpp::types::LlamaCppToolCall::OpenAI(call) => {
+                        let arguments: serde_json::Value =
+                            serde_json::from_str(&call.function.arguments)
+                                .unwrap_or(serde_json::Value::Null);
+                        crate::tools::ToolCall::new(
+                            call.id.clone(),
+                            call.function.name.clone(),
+                            arguments,
+                        )
                     }
                 })
                 .collect::<Vec<_>>()

@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
     error::LlmError,
@@ -9,6 +10,9 @@ use crate::{
     },
     tools::ProviderToolFormat,
 };
+
+static LOGGED_TOOL_DEFS: AtomicBool = AtomicBool::new(false);
+static LOGGED_SYSTEM_PROMPT: AtomicBool = AtomicBool::new(false);
 
 /// OpenAI LLM client
 pub struct OpenAIClient {
@@ -58,6 +62,19 @@ impl OpenAIClient {
         );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
+        if should_log_payloads() {
+            if let Ok(mut payload) = serde_json::to_value(&request) {
+                maybe_redact_tools(&mut payload);
+                if let Ok(payload) = serde_json::to_string_pretty(&payload) {
+                    tracing::debug!(
+                        target: "llm_sdk::openai",
+                        "OpenAI request payload: {}",
+                        truncate_payload(&payload)
+                    );
+                }
+            }
+        }
+
         let response = self
             .http_client
             .post(&url)
@@ -74,6 +91,16 @@ impl OpenAIClient {
                 .json()
                 .await
                 .map_err(|e| LlmError::internal(format!("Failed to parse response: {}", e)))?;
+
+            if should_log_payloads() {
+                let payload = format!("{:#?}", openai_response);
+                tracing::debug!(
+                    target: "llm_sdk::openai",
+                    "OpenAI response payload: {}",
+                    truncate_payload(&payload)
+                );
+            }
+
             Ok(openai_response)
         } else {
             // Extract retry-after header before consuming the response
@@ -268,5 +295,54 @@ impl crate::client::LlmClient for OpenAIClient {
 
     fn model_name(&self) -> &str {
         crate::models::openai::GPT_4O_ID // Default to GPT-4o
+    }
+}
+
+fn should_log_payloads() -> bool {
+    std::env::var("NOCODO_LLM_LOG_PAYLOADS")
+        .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+fn truncate_payload(payload: &str) -> String {
+    const MAX_LEN: usize = 50_000;
+    if payload.len() <= MAX_LEN {
+        payload.to_string()
+    } else {
+        let mut truncated = payload[..MAX_LEN].to_string();
+        truncated.push_str("\n...<truncated>...");
+        truncated
+    }
+}
+
+fn maybe_redact_tools(payload: &mut serde_json::Value) {
+    let Some(obj) = payload.as_object_mut() else {
+        return;
+    };
+    if obj.get("tools").is_some() {
+        let already_logged = LOGGED_TOOL_DEFS.load(Ordering::Relaxed);
+        if already_logged {
+            obj.insert(
+                "tools".to_string(),
+                serde_json::Value::String("<omitted>".to_string()),
+            );
+        } else {
+            LOGGED_TOOL_DEFS.store(true, Ordering::Relaxed);
+        }
+    }
+    if obj.get("input").is_some() {
+        if let Some(input_obj) = obj.get_mut("input").and_then(|i| i.as_object_mut()) {
+            if input_obj.get("instructions").is_some() {
+                let already_logged = LOGGED_SYSTEM_PROMPT.load(Ordering::Relaxed);
+                if already_logged {
+                    input_obj.insert(
+                        "instructions".to_string(),
+                        serde_json::Value::String("<omitted>".to_string()),
+                    );
+                } else {
+                    LOGGED_SYSTEM_PROMPT.store(true, Ordering::Relaxed);
+                }
+            }
+        }
     }
 }

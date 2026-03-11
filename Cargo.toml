@@ -30,3 +30,8 @@ ffi = []
 [[test]]
 name = "trait_implementation_tests"
 path = "tests/trait_implementation_tests.rs"
+
+[[bin]]
+name = "llm-test-runner"
+path = "bin/test_runner.rs"
+required-features = ["test-runner"]

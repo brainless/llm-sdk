@@ -150,11 +150,16 @@ fn truncate_payload(payload: &str) -> String {
 }
 
 fn maybe_redact_tools(payload: &mut serde_json::Value) {
-    let Some(obj) = payload.as_object_mut() else { return };
+    let Some(obj) = payload.as_object_mut() else {
+        return;
+    };
     if obj.get("tools").is_some() {
         let already_logged = LOGGED_TOOL_DEFS.load(Ordering::Relaxed);
         if already_logged {
-            obj.insert("tools".to_string(), serde_json::Value::String("<omitted>".to_string()));
+            obj.insert(
+                "tools".to_string(),
+                serde_json::Value::String("<omitted>".to_string()),
+            );
             obj.insert(
                 "toolConfig".to_string(),
                 serde_json::Value::String("<omitted>".to_string()),
@@ -234,9 +239,7 @@ impl crate::client::LlmClient for GeminiClient {
                         .collect::<Result<Vec<GeminiPart>, LlmError>>()?;
 
                     if parts.is_empty() {
-                        return Err(LlmError::invalid_request(
-                            "Message content cannot be empty",
-                        ));
+                        return Err(LlmError::invalid_request("Message content cannot be empty"));
                     }
 
                     contents.push(GeminiContent {

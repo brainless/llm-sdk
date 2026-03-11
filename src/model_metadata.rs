@@ -233,7 +233,7 @@ pub fn get_all_models() -> Vec<ModelMetadata> {
             supports_vision: true,
             supports_reasoning: true,
             input_cost_per_token: Some(0.00000025), // $0.25 per million
-            output_cost_per_token: Some(0.000002), // $2.00 per million
+            output_cost_per_token: Some(0.000002),  // $2.00 per million
             default_temperature: Some(1.0),
             default_max_tokens: Some(4096),
             default_thinking_level: None,

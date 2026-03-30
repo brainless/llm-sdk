@@ -122,6 +122,7 @@ impl crate::client::LlmClient for LlamaCppClient {
                     crate::types::Role::User => LlamaCppRole::User,
                     crate::types::Role::Assistant => LlamaCppRole::Assistant,
                     crate::types::Role::System => LlamaCppRole::System,
+                    crate::types::Role::Tool => LlamaCppRole::Tool,
                 };
 
                 let content = msg
@@ -136,7 +137,10 @@ impl crate::client::LlmClient for LlamaCppClient {
                     .collect::<Result<Vec<String>, LlmError>>()?
                     .join("");
 
-                Ok(crate::llama_cpp::types::LlamaCppMessage::new(role, content))
+                let mut provider_message =
+                    crate::llama_cpp::types::LlamaCppMessage::new(role, content);
+                provider_message.tool_call_id = msg.tool_call_id;
+                Ok(provider_message)
             })
             .collect::<Result<Vec<crate::llama_cpp::types::LlamaCppMessage>, LlmError>>()?;
 

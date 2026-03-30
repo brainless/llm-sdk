@@ -10,6 +10,8 @@ pub enum Role {
     Assistant,
     /// System message
     System,
+    /// Tool message (result for a previous tool call)
+    Tool,
 }
 
 impl std::fmt::Display for Role {
@@ -18,6 +20,7 @@ impl std::fmt::Display for Role {
             Role::User => write!(f, "user"),
             Role::Assistant => write!(f, "assistant"),
             Role::System => write!(f, "system"),
+            Role::Tool => write!(f, "tool"),
         }
     }
 }
@@ -56,6 +59,9 @@ pub struct Message {
     pub role: Role,
     /// Content of the message
     pub content: Vec<ContentBlock>,
+    /// Tool call id for tool role messages (OpenAI-style)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 impl Message {
@@ -64,6 +70,7 @@ impl Message {
         Self {
             role,
             content: vec![ContentBlock::Text { text: text.into() }],
+            tool_call_id: None,
         }
     }
 
@@ -80,6 +87,15 @@ impl Message {
     /// Create a system message with text content
     pub fn system<S: Into<String>>(text: S) -> Self {
         Self::text(Role::System, text)
+    }
+
+    /// Create a tool-result message with text content
+    pub fn tool<S: Into<String>>(tool_call_id: impl Into<String>, text: S) -> Self {
+        Self {
+            role: Role::Tool,
+            content: vec![ContentBlock::Text { text: text.into() }],
+            tool_call_id: Some(tool_call_id.into()),
+        }
     }
 }
 

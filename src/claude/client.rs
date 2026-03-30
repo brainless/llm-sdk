@@ -174,6 +174,7 @@ impl crate::client::LlmClient for ClaudeClient {
                 let role = match msg.role {
                     crate::types::Role::User => crate::claude::types::ClaudeRole::User,
                     crate::types::Role::Assistant => crate::claude::types::ClaudeRole::Assistant,
+                    crate::types::Role::Tool => crate::claude::types::ClaudeRole::User,
                     crate::types::Role::System => {
                         return Err(LlmError::invalid_request(
                             "System messages should be provided via the system parameter",

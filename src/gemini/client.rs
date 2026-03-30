@@ -217,10 +217,13 @@ impl crate::client::LlmClient for GeminiClient {
                         }
                     }
                 }
-                crate::types::Role::User | crate::types::Role::Assistant => {
+                crate::types::Role::User
+                | crate::types::Role::Assistant
+                | crate::types::Role::Tool => {
                     let role = match msg.role {
                         crate::types::Role::User => GeminiRole::User,
                         crate::types::Role::Assistant => GeminiRole::Model,
+                        crate::types::Role::Tool => GeminiRole::User,
                         crate::types::Role::System => unreachable!(),
                     };
 

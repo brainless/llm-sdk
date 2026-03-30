@@ -148,6 +148,7 @@ impl crate::client::LlmClient for ZenGlmClient {
                     crate::types::Role::User => crate::glm::types::GlmRole::User,
                     crate::types::Role::Assistant => crate::glm::types::GlmRole::Assistant,
                     crate::types::Role::System => crate::glm::types::GlmRole::System,
+                    crate::types::Role::Tool => crate::glm::types::GlmRole::Assistant,
                 };
 
                 // GLM uses content as Option<String>

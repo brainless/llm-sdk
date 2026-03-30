@@ -247,6 +247,7 @@ impl crate::client::LlmClient for OllamaClient {
                     crate::types::Role::User => OllamaRole::User,
                     crate::types::Role::Assistant => OllamaRole::Assistant,
                     crate::types::Role::System => OllamaRole::System,
+                    crate::types::Role::Tool => OllamaRole::Tool,
                 };
 
                 let content = msg

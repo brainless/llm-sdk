@@ -147,6 +147,7 @@ impl crate::client::LlmClient for ZenGrokClient {
                     crate::types::Role::User => crate::grok::types::GrokRole::User,
                     crate::types::Role::Assistant => crate::grok::types::GrokRole::Assistant,
                     crate::types::Role::System => crate::grok::types::GrokRole::System,
+                    crate::types::Role::Tool => crate::grok::types::GrokRole::Assistant,
                 };
 
                 // For now, only support text content

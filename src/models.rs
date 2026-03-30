@@ -230,5 +230,16 @@ pub mod ollama {
     pub const QWEN_3_5_9B: &str = QWEN_3_5_9B_ID;
 }
 
+/// llama.cpp local model constants (GGUF models)
+pub mod llama_cpp {
+    /// Qwen 3.5 0.8B GGUF (unsloth/Qwen3.5-0.8B-GGUF:UD-Q4_K_XL)
+    /// Small instruction-following model for edge devices
+    pub const QWEN_3_5_0_8B_ID: &str = "unsloth/Qwen3.5-0.8B-GGUF:UD-Q4_K_XL";
+    pub const QWEN_3_5_0_8B_NAME: &str = "Qwen 3.5 0.8B (GGUF)";
+
+    // Backwards compatibility
+    pub const QWEN_3_5_0_8B: &str = QWEN_3_5_0_8B_ID;
+}
+
 // Re-export for convenience
 pub use claude::*;

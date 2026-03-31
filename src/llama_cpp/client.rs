@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use tracing::debug;
 
 use crate::{
     error::LlmError,
@@ -114,35 +115,41 @@ impl crate::client::LlmClient for LlamaCppClient {
         &self,
         request: crate::types::CompletionRequest,
     ) -> Result<crate::types::CompletionResponse, LlmError> {
-        let messages = request
-            .messages
-            .into_iter()
-            .map(|msg| {
-                let role = match msg.role {
-                    crate::types::Role::User => LlamaCppRole::User,
-                    crate::types::Role::Assistant => LlamaCppRole::Assistant,
-                    crate::types::Role::System => LlamaCppRole::System,
-                    crate::types::Role::Tool => LlamaCppRole::Tool,
-                };
+        let mut messages: Vec<crate::llama_cpp::types::LlamaCppMessage> = Vec::new();
 
-                let content = msg
-                    .content
-                    .into_iter()
-                    .map(|block| match block {
-                        crate::types::ContentBlock::Text { text } => Ok(text),
-                        crate::types::ContentBlock::Image { .. } => Err(LlmError::invalid_request(
-                            "Image content not supported in llama.cpp client",
-                        )),
-                    })
-                    .collect::<Result<Vec<String>, LlmError>>()?
-                    .join("");
+        // Prepend the system prompt as a system message if provided.
+        if let Some(ref system_text) = request.system {
+            messages.push(crate::llama_cpp::types::LlamaCppMessage::new(
+                LlamaCppRole::System,
+                system_text.clone(),
+            ));
+        }
 
-                let mut provider_message =
-                    crate::llama_cpp::types::LlamaCppMessage::new(role, content);
-                provider_message.tool_call_id = msg.tool_call_id;
-                Ok(provider_message)
-            })
-            .collect::<Result<Vec<crate::llama_cpp::types::LlamaCppMessage>, LlmError>>()?;
+        for msg in request.messages {
+            let role = match msg.role {
+                crate::types::Role::User => LlamaCppRole::User,
+                crate::types::Role::Assistant => LlamaCppRole::Assistant,
+                crate::types::Role::System => LlamaCppRole::System,
+                crate::types::Role::Tool => LlamaCppRole::Tool,
+            };
+
+            let content = msg
+                .content
+                .into_iter()
+                .map(|block| match block {
+                    crate::types::ContentBlock::Text { text } => Ok(text),
+                    crate::types::ContentBlock::Image { .. } => Err(LlmError::invalid_request(
+                        "Image content not supported in llama.cpp client",
+                    )),
+                })
+                .collect::<Result<Vec<String>, LlmError>>()?
+                .join("");
+
+            let mut provider_message =
+                crate::llama_cpp::types::LlamaCppMessage::new(role, content);
+            provider_message.tool_call_id = msg.tool_call_id;
+            messages.push(provider_message);
+        }
 
         let tools = request.tools.as_ref().map(|tools| {
             tools
@@ -150,6 +157,12 @@ impl crate::client::LlmClient for LlamaCppClient {
                 .map(crate::llama_cpp::tools::LlamaCppToolFormat::to_provider_tool)
                 .collect::<Vec<_>>()
         });
+
+        debug!(
+            total_messages = messages.len(),
+            has_system = messages.first().map(|m| matches!(m.role, LlamaCppRole::System)).unwrap_or(false),
+            "llama.cpp request prepared"
+        );
 
         let llama_request = LlamaCppChatCompletionRequest {
             model: request.model,

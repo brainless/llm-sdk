@@ -188,7 +188,7 @@ pub struct OpenAIResponseResponse {
 pub struct OpenAIOutputItem {
     /// Unique identifier for the output item
     pub id: String,
-    /// Type of the output item
+    /// Type of the output item: "message", "function_call", "reasoning"
     #[serde(rename = "type")]
     pub item_type: String,
     /// Content of the output item (for message types)
@@ -203,6 +203,15 @@ pub struct OpenAIOutputItem {
     /// Summary for reasoning types
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<Vec<serde_json::Value>>,
+    /// Function name (for function_call types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Call ID used to correlate tool results (for function_call types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    /// JSON-encoded function arguments (for function_call types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<String>,
 }
 
 /// Content block in output item

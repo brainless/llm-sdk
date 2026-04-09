@@ -207,26 +207,35 @@ impl crate::client::LlmClient for OpenAIClient {
             response_format: _,
         } = request;
 
-        // Use Responses API for all models
-        let mut input = messages
-            .into_iter()
-            .map(|msg| {
-                // For now, only support text content
-                msg.content
-                    .into_iter()
-                    .map(|block| match block {
-                        crate::types::ContentBlock::Text { text } => Ok(text),
-                        crate::types::ContentBlock::Image { .. } => Err(LlmError::invalid_request(
-                            "Image content not supported in Responses API",
-                        )),
-                    })
-                    .collect::<Result<Vec<String>, LlmError>>()
-            })
-            .collect::<Result<Vec<Vec<String>>, LlmError>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<String>>()
-            .join("\n");
+        // Use Responses API for all models.
+        // Messages are serialized into a single input string; tool result messages
+        // are formatted with their call_id so the model understands the tool exchange.
+        let mut parts: Vec<String> = Vec::new();
+        for msg in messages {
+            let role_label = match msg.role {
+                crate::types::Role::User => "User".to_string(),
+                crate::types::Role::Assistant => "Assistant".to_string(),
+                crate::types::Role::System => "System".to_string(),
+                crate::types::Role::Tool => match &msg.tool_call_id {
+                    Some(id) => format!("Tool result (call_id: {})", id),
+                    None => "Tool result".to_string(),
+                },
+            };
+            let text = msg
+                .content
+                .into_iter()
+                .map(|block| match block {
+                    crate::types::ContentBlock::Text { text } => Ok(text),
+                    crate::types::ContentBlock::Image { .. } => Err(LlmError::invalid_request(
+                        "Image content not supported in Responses API",
+                    )),
+                })
+                .collect::<Result<Vec<String>, LlmError>>()?
+                .join("");
+            parts.push(format!("{}: {}", role_label, text));
+        }
+
+        let mut input = parts.join("\n");
 
         if let Some(system_prompt) = system {
             input = format!("System:\n{}\n\n{}", system_prompt, input);
@@ -267,6 +276,39 @@ impl crate::client::LlmClient for OpenAIClient {
             }
         }
 
+        // Extract tool calls from function_call output items
+        let raw_tool_calls: Vec<crate::tools::ToolCall> = openai_response
+            .output
+            .iter()
+            .filter(|item| item.item_type == "function_call")
+            .filter_map(|item| {
+                let name = item.name.as_ref()?;
+                let call_id = item.call_id.as_ref()?;
+                let arguments_str = item.arguments.as_deref().unwrap_or("{}");
+                let arguments: serde_json::Value =
+                    serde_json::from_str(arguments_str).unwrap_or(serde_json::Value::Object(
+                        serde_json::Map::new(),
+                    ));
+                Some(crate::tools::ToolCall::new(
+                    call_id.clone(),
+                    name.clone(),
+                    arguments,
+                ))
+            })
+            .collect();
+
+        let tool_calls = if raw_tool_calls.is_empty() {
+            None
+        } else {
+            Some(raw_tool_calls)
+        };
+
+        let stop_reason = if tool_calls.is_some() {
+            Some("tool_use".to_string())
+        } else {
+            Some("end_turn".to_string())
+        };
+
         let content = vec![crate::types::ContentBlock::Text { text: text_content }];
 
         let response = crate::types::CompletionResponse {
@@ -282,8 +324,8 @@ impl crate::client::LlmClient for OpenAIClient {
                     .output_tokens
                     .unwrap_or(openai_response.usage.completion_tokens.unwrap_or(0)),
             },
-            stop_reason: Some("completed".to_string()),
-            tool_calls: None, // TODO: Extract tool calls from OpenAI response function_call items
+            stop_reason,
+            tool_calls,
         };
 
         Ok(response)

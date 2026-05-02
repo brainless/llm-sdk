@@ -28,3 +28,6 @@ pub const OLLAMA: &str = "ollama";
 
 /// llama.cpp local provider
 pub const LLAMA_CPP: &str = "llama_cpp";
+
+/// Groq provider
+pub const GROQ: &str = "groq";

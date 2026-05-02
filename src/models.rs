@@ -230,6 +230,21 @@ pub mod ollama {
     pub const QWEN_3_5_9B: &str = QWEN_3_5_9B_ID;
 }
 
+/// Groq-hosted model constants
+pub mod groq {
+    /// OpenAI GPT OSS 120B via Groq — reasoning effort: low/medium/high
+    pub const GPT_OSS_120B_ID: &str = "openai/gpt-oss-120b";
+    pub const GPT_OSS_120B_NAME: &str = "GPT OSS 120B";
+
+    /// OpenAI GPT OSS 20B via Groq — reasoning effort: low/medium/high
+    pub const GPT_OSS_20B_ID: &str = "openai/gpt-oss-20b";
+    pub const GPT_OSS_20B_NAME: &str = "GPT OSS 20B";
+
+    // Shorthand aliases
+    pub const GPT_OSS_120B: &str = GPT_OSS_120B_ID;
+    pub const GPT_OSS_20B: &str = GPT_OSS_20B_ID;
+}
+
 /// llama.cpp local model constants (GGUF models)
 pub mod llama_cpp {
     /// Qwen 3.5 0.8B GGUF (unsloth/Qwen3.5-0.8B-GGUF:UD-Q4_K_XL)

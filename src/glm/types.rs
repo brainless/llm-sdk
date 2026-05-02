@@ -22,6 +22,9 @@ pub struct GlmChatCompletionRequest {
     /// Whether to stream the response
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
+    /// Reasoning effort for gpt-oss-120b and zai-glm-4.7: "low", "medium", "high"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<String>,
     /// Seed for deterministic sampling
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
@@ -61,6 +64,8 @@ pub struct GlmMessage {
 pub enum GlmRole {
     /// System message
     System,
+    /// Developer message (gpt-oss-120b); treated as system by other models
+    Developer,
     /// User message
     User,
     /// Assistant message

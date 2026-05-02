@@ -235,9 +235,10 @@ impl crate::client::LlmClient for CerebrasGlmClient {
             temperature: request.temperature,
             top_p: request.top_p,
             stop: request.stop_sequences,
-            stream: None, // Non-streaming for now
+            stream: None,
+            reasoning_effort: None,
             seed: None,
-            tools: None, // No tools for generic LlmClient interface
+            tools: None,
             tool_choice: None,
             response_format,
         };
@@ -260,6 +261,7 @@ impl crate::client::LlmClient for CerebrasGlmClient {
                 crate::glm::types::GlmRole::User => crate::types::Role::User,
                 crate::glm::types::GlmRole::Assistant => crate::types::Role::Assistant,
                 crate::glm::types::GlmRole::System => crate::types::Role::System,
+                crate::glm::types::GlmRole::Developer => crate::types::Role::System,
             },
             usage: crate::types::Usage {
                 input_tokens: glm_response

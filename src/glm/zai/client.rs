@@ -356,6 +356,7 @@ impl From<crate::glm::types::GlmMessage> for ZaiMessage {
         Self {
             role: match glm_msg.role {
                 crate::glm::types::GlmRole::System => "system".to_string(),
+                crate::glm::types::GlmRole::Developer => "system".to_string(),
                 crate::glm::types::GlmRole::User => "user".to_string(),
                 crate::glm::types::GlmRole::Assistant => "assistant".to_string(),
             },

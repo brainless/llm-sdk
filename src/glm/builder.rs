@@ -30,6 +30,7 @@ pub struct GlmMessageBuilder<'a, T: GlmClientTrait> {
     top_p: Option<f32>,
     stop: Option<Vec<String>>,
     stream: Option<bool>,
+    reasoning_effort: Option<String>,
     seed: Option<i32>,
     tools: Option<Vec<GlmTool>>,
     tool_choice: Option<serde_json::Value>,
@@ -66,6 +67,7 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
             top_p: None,
             stop: None,
             stream: None,
+            reasoning_effort: None,
             seed: None,
             tools: None,
             tool_choice: None,
@@ -87,16 +89,16 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
 
     /// Add a message to the conversation
     ///
-    /// Valid roles: "system", "user", "assistant"
+    /// Valid roles: "system", "developer", "user", "assistant"
     /// Invalid roles will be treated as "user" by default.
     pub fn message(mut self, role: impl Into<String>, content: impl Into<String>) -> Self {
         let role_str = role.into();
         let role = match role_str.as_str() {
             "system" => GlmRole::System,
+            "developer" => GlmRole::Developer,
             "user" => GlmRole::User,
             "assistant" => GlmRole::Assistant,
             _ => {
-                // Log warning and default to User role instead of panicking
                 tracing::warn!("Invalid role '{}', defaulting to 'user'", role_str);
                 GlmRole::User
             }
@@ -109,6 +111,11 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
     /// Add a system message
     pub fn system_message(self, content: impl Into<String>) -> Self {
         self.message("system", content)
+    }
+
+    /// Add a developer message (gpt-oss-120b; behaves as system on other models)
+    pub fn developer_message(self, content: impl Into<String>) -> Self {
+        self.message("developer", content)
     }
 
     /// Add a user message
@@ -142,6 +149,12 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
     /// Enable or disable streaming
     pub fn stream(mut self, stream: bool) -> Self {
         self.stream = Some(stream);
+        self
+    }
+
+    /// Set reasoning effort for gpt-oss-120b and zai-glm-4.7. Values: "low", "medium", "high".
+    pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
+        self.reasoning_effort = Some(effort.into());
         self
     }
 
@@ -198,6 +211,7 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
             top_p: self.top_p,
             stop: self.stop,
             stream: self.stream,
+            reasoning_effort: self.reasoning_effort,
             seed: self.seed,
             tools: self.tools,
             tool_choice: self.tool_choice,

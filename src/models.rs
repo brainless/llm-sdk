@@ -112,16 +112,36 @@ pub mod grok {
 
 /// GLM model constants (via Cerebras/zAI)
 pub mod glm {
+    /// Llama 3.1 8B - Fast open source model via Cerebras
+    pub const LLAMA_3_1_8B_ID: &str = "llama3.1-8b";
+    pub const LLAMA_3_1_8B_NAME: &str = "Llama 3.1 8B";
+
     /// Llama 3.3 70B - Open source model via Cerebras
     pub const LLAMA_3_3_70B_ID: &str = "llama-3.3-70b";
     pub const LLAMA_3_3_70B_NAME: &str = "Llama 3.3 70B";
+
+    /// Qwen 3 235B A22B Instruct - MoE reasoning model via Cerebras (preview)
+    pub const QWEN_3_235B_ID: &str = "qwen-3-235b-a22b-instruct-2507";
+    pub const QWEN_3_235B_NAME: &str = "Qwen 3 235B A22B Instruct";
+
+    /// GPT OSS 120B via Cerebras - reasoning effort: low/medium/high
+    pub const GPT_OSS_120B_ID: &str = "gpt-oss-120b";
+    pub const GPT_OSS_120B_NAME: &str = "GPT OSS 120B";
+
+    /// zAI GLM 4.7 - GLM reasoning model via zAI provider (preview)
+    pub const ZAI_GLM_4_7_ID: &str = "zai-glm-4.7";
+    pub const ZAI_GLM_4_7_NAME: &str = "zAI GLM 4.7";
 
     /// zAI GLM 4.6 - GLM model via zAI provider
     pub const ZAI_GLM_4_6_ID: &str = "zai-glm-4.6";
     pub const ZAI_GLM_4_6_NAME: &str = "zAI GLM 4.6";
 
-    // Backwards compatibility
+    // Shorthand aliases
+    pub const LLAMA_3_1_8B: &str = LLAMA_3_1_8B_ID;
     pub const LLAMA_3_3_70B: &str = LLAMA_3_3_70B_ID;
+    pub const QWEN_3_235B: &str = QWEN_3_235B_ID;
+    pub const GPT_OSS_120B: &str = GPT_OSS_120B_ID;
+    pub const ZAI_GLM_4_7: &str = ZAI_GLM_4_7_ID;
     pub const ZAI_GLM_4_6: &str = ZAI_GLM_4_6_ID;
 }
 

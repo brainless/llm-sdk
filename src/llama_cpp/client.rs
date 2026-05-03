@@ -145,8 +145,7 @@ impl crate::client::LlmClient for LlamaCppClient {
                 .collect::<Result<Vec<String>, LlmError>>()?
                 .join("");
 
-            let mut provider_message =
-                crate::llama_cpp::types::LlamaCppMessage::new(role, content);
+            let mut provider_message = crate::llama_cpp::types::LlamaCppMessage::new(role, content);
             provider_message.tool_call_id = msg.tool_call_id;
             messages.push(provider_message);
         }
@@ -160,7 +159,10 @@ impl crate::client::LlmClient for LlamaCppClient {
 
         debug!(
             total_messages = messages.len(),
-            has_system = messages.first().map(|m| matches!(m.role, LlamaCppRole::System)).unwrap_or(false),
+            has_system = messages
+                .first()
+                .map(|m| matches!(m.role, LlamaCppRole::System))
+                .unwrap_or(false),
             "llama.cpp request prepared"
         );
 

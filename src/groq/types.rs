@@ -30,6 +30,7 @@ pub struct GroqChatCompletionRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqMessage {
     pub role: GroqRole,
+    #[serde(default)]
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<GroqToolCall>>,

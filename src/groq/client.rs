@@ -3,10 +3,14 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 
 use crate::{
     error::LlmError,
-    groq::types::{
-        GroqChatCompletionRequest, GroqChatCompletionResponse, GroqErrorResponse,
-        GroqResponseFormat,
+    groq::{
+        tools::GroqToolFormat,
+        types::{
+            GroqChatCompletionRequest, GroqChatCompletionResponse, GroqErrorResponse,
+            GroqFunctionCall, GroqMessage, GroqResponseFormat, GroqRole, GroqToolCall,
+        },
     },
+    tools::ProviderToolFormat,
 };
 
 pub struct GroqClient {
@@ -152,37 +156,72 @@ impl crate::client::LlmClient for GroqClient {
         &self,
         request: crate::types::CompletionRequest,
     ) -> Result<crate::types::CompletionResponse, LlmError> {
-        let groq_messages = request
-            .messages
-            .into_iter()
-            .map(|msg| {
-                let role = match msg.role {
-                    crate::types::Role::User => crate::groq::types::GroqRole::User,
-                    crate::types::Role::Assistant => crate::groq::types::GroqRole::Assistant,
-                    crate::types::Role::System => crate::groq::types::GroqRole::System,
-                    crate::types::Role::Tool => crate::groq::types::GroqRole::Tool,
-                };
+        let mut groq_messages: Vec<GroqMessage> = Vec::new();
 
-                let content = msg
-                    .content
-                    .into_iter()
-                    .map(|block| match block {
-                        crate::types::ContentBlock::Text { text } => Ok(text),
-                        crate::types::ContentBlock::Image { .. } => Err(
-                            LlmError::invalid_request("Image content not supported"),
-                        ),
-                    })
-                    .collect::<Result<Vec<String>, LlmError>>()?
-                    .join("");
+        // System prompt goes as the first message with role=system
+        if let Some(system) = request.system {
+            groq_messages.push(GroqMessage::system(system));
+        }
 
-                Ok(crate::groq::types::GroqMessage {
-                    role,
+        for msg in request.messages {
+            let content = msg
+                .content
+                .into_iter()
+                .map(|block| match block {
+                    crate::types::ContentBlock::Text { text } => Ok(text),
+                    crate::types::ContentBlock::Image { .. } => {
+                        Err(LlmError::invalid_request("Image content not supported"))
+                    }
+                })
+                .collect::<Result<Vec<String>, LlmError>>()?
+                .join("");
+
+            let groq_msg = match msg.role {
+                // Assistant message that carries a tool call invocation
+                crate::types::Role::Assistant if msg.tool_call_id.is_some() => {
+                    let call_id = msg.tool_call_id.unwrap();
+                    let tool_name = msg.tool_name.unwrap_or_default();
+                    GroqMessage {
+                        role: GroqRole::Assistant,
+                        content: String::new(),
+                        tool_calls: Some(vec![GroqToolCall {
+                            id: call_id,
+                            r#type: "function".to_string(),
+                            function: GroqFunctionCall {
+                                name: tool_name,
+                                arguments: content,
+                            },
+                        }]),
+                        tool_call_id: None,
+                    }
+                }
+                // Tool result message
+                crate::types::Role::Tool => GroqMessage {
+                    role: GroqRole::Tool,
                     content,
                     tool_calls: None,
-                    tool_call_id: None,
-                })
-            })
-            .collect::<Result<Vec<crate::groq::types::GroqMessage>, LlmError>>()?;
+                    tool_call_id: msg.tool_call_id,
+                },
+                role => {
+                    let groq_role = match role {
+                        crate::types::Role::User => GroqRole::User,
+                        crate::types::Role::Assistant => GroqRole::Assistant,
+                        crate::types::Role::System => GroqRole::System,
+                        crate::types::Role::Tool => GroqRole::Tool,
+                    };
+                    GroqMessage { role: groq_role, content, tool_calls: None, tool_call_id: None }
+                }
+            };
+            groq_messages.push(groq_msg);
+        }
+
+        let groq_tools = request.tools.map(|tools| {
+            tools.iter().map(|t| GroqToolFormat::to_provider_tool(t)).collect()
+        });
+
+        let tool_choice = request
+            .tool_choice
+            .map(|c| GroqToolFormat::to_provider_tool_choice(&c));
 
         let response_format = request.response_format.map(|rf| match rf {
             crate::types::ResponseFormat::Text => GroqResponseFormat::text(),
@@ -198,8 +237,8 @@ impl crate::client::LlmClient for GroqClient {
             stop: request.stop_sequences,
             stream: None,
             reasoning_effort: None,
-            tools: None,
-            tool_choice: None,
+            tools: groq_tools,
+            tool_choice,
             response_format,
         };
 
@@ -210,6 +249,13 @@ impl crate::client::LlmClient for GroqClient {
         }
 
         let choice = &groq_response.choices[0];
+
+        let tool_calls = groq_response.tool_calls();
+        let tool_calls = match tool_calls {
+            Some(tc) if !tc.is_empty() => Some(tc),
+            _ => None,
+        };
+
         let content = vec![crate::types::ContentBlock::Text {
             text: choice.message.content.clone(),
         }];
@@ -217,17 +263,13 @@ impl crate::client::LlmClient for GroqClient {
         Ok(crate::types::CompletionResponse {
             content,
             role: match choice.message.role {
-                crate::groq::types::GroqRole::User => crate::types::Role::User,
-                crate::groq::types::GroqRole::Assistant => crate::types::Role::Assistant,
-                crate::groq::types::GroqRole::System => crate::types::Role::System,
-                crate::groq::types::GroqRole::Tool => crate::types::Role::Tool,
+                GroqRole::User => crate::types::Role::User,
+                GroqRole::Assistant => crate::types::Role::Assistant,
+                GroqRole::System => crate::types::Role::System,
+                GroqRole::Tool => crate::types::Role::Tool,
             },
             usage: crate::types::Usage {
-                input_tokens: groq_response
-                    .usage
-                    .as_ref()
-                    .map(|u| u.prompt_tokens)
-                    .unwrap_or(0),
+                input_tokens: groq_response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
                 output_tokens: groq_response
                     .usage
                     .as_ref()
@@ -235,7 +277,7 @@ impl crate::client::LlmClient for GroqClient {
                     .unwrap_or(0),
             },
             stop_reason: choice.finish_reason.clone(),
-            tool_calls: None,
+            tool_calls,
         })
     }
 

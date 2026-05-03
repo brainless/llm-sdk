@@ -62,6 +62,10 @@ pub struct Message {
     /// Tool call id for tool role messages (OpenAI-style)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Tool name — set on assistant tool-invocation messages so clients can reconstruct
+    /// the provider-specific tool_calls array when replaying history.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
 }
 
 impl Message {
@@ -71,6 +75,7 @@ impl Message {
             role,
             content: vec![ContentBlock::Text { text: text.into() }],
             tool_call_id: None,
+            tool_name: None,
         }
     }
 
@@ -95,6 +100,7 @@ impl Message {
             role: Role::Tool,
             content: vec![ContentBlock::Text { text: text.into() }],
             tool_call_id: Some(tool_call_id.into()),
+            tool_name: None,
         }
     }
 }

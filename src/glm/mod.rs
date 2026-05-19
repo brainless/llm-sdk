@@ -12,7 +12,6 @@ pub use types::*;
 // Re-export for convenience
 pub use cerebras::*;
 pub use zai::*;
-pub use zen::*;
 
 // Type alias for backwards compatibility
 #[deprecated(since = "0.2.0", note = "Use cerebras::CerebrasGlmClient explicitly")]

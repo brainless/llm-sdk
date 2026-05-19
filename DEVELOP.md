@@ -37,10 +37,11 @@ src/
 ├── gemini/             # Google Gemini 3 (thinking levels)
 ├── grok/               # xAI Grok (OpenAI-compatible)
 │   ├── xai/            # Paid tier
-│   └── zen/            # Free tier
+│   └── zen/            # Free tier (deprecated, use src/zen/)
 ├── glm/                # Cerebras GLM
 │   ├── cerebras/       # Paid tier
-│   └── zen/            # Free tier
+│   └── zai/            # zAI provider
+├── zen/                # OpenCode Zen (multi-lab free models)
 ├── ollama/             # Local models via /api/chat
 ├── llama_cpp/          # Local models via OpenAI API
 ├── openai/             # GPT-5 via Responses API

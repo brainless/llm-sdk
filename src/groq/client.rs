@@ -132,21 +132,26 @@ impl GroqClient {
 
 impl GroqChatCompletionResponse {
     pub fn tool_calls(&self) -> Option<Vec<crate::tools::ToolCall>> {
-        self.choices.first()?.message.tool_calls.as_ref().map(|calls| {
-            calls
-                .iter()
-                .map(|call| {
-                    let arguments: serde_json::Value =
-                        serde_json::from_str(&call.function.arguments)
-                            .unwrap_or(serde_json::Value::Null);
-                    crate::tools::ToolCall::new(
-                        call.id.clone(),
-                        call.function.name.clone(),
-                        arguments,
-                    )
-                })
-                .collect()
-        })
+        self.choices
+            .first()?
+            .message
+            .tool_calls
+            .as_ref()
+            .map(|calls| {
+                calls
+                    .iter()
+                    .map(|call| {
+                        let arguments: serde_json::Value =
+                            serde_json::from_str(&call.function.arguments)
+                                .unwrap_or(serde_json::Value::Null);
+                        crate::tools::ToolCall::new(
+                            call.id.clone(),
+                            call.function.name.clone(),
+                            arguments,
+                        )
+                    })
+                    .collect()
+            })
     }
 }
 
@@ -209,14 +214,22 @@ impl crate::client::LlmClient for GroqClient {
                         crate::types::Role::System => GroqRole::System,
                         crate::types::Role::Tool => GroqRole::Tool,
                     };
-                    GroqMessage { role: groq_role, content, tool_calls: None, tool_call_id: None }
+                    GroqMessage {
+                        role: groq_role,
+                        content,
+                        tool_calls: None,
+                        tool_call_id: None,
+                    }
                 }
             };
             groq_messages.push(groq_msg);
         }
 
         let groq_tools = request.tools.map(|tools| {
-            tools.iter().map(|t| GroqToolFormat::to_provider_tool(t)).collect()
+            tools
+                .iter()
+                .map(|t| GroqToolFormat::to_provider_tool(t))
+                .collect()
         });
 
         let tool_choice = request
@@ -269,7 +282,11 @@ impl crate::client::LlmClient for GroqClient {
                 GroqRole::Tool => crate::types::Role::Tool,
             },
             usage: crate::types::Usage {
-                input_tokens: groq_response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
+                input_tokens: groq_response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens)
+                    .unwrap_or(0),
                 output_tokens: groq_response
                     .usage
                     .as_ref()

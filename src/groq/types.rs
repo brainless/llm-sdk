@@ -109,10 +109,14 @@ pub struct GroqResponseFormat {
 
 impl GroqResponseFormat {
     pub fn text() -> Self {
-        Self { format_type: GroqResponseFormatType::Text }
+        Self {
+            format_type: GroqResponseFormatType::Text,
+        }
     }
     pub fn json_object() -> Self {
-        Self { format_type: GroqResponseFormatType::JsonObject }
+        Self {
+            format_type: GroqResponseFormatType::JsonObject,
+        }
     }
 }
 
@@ -123,7 +127,12 @@ pub type GroqFunctionCall = crate::openai::types::OpenAIFunctionCall;
 
 impl GroqMessage {
     pub fn new<S: Into<String>>(role: GroqRole, content: S) -> Self {
-        Self { role, content: content.into(), tool_calls: None, tool_call_id: None }
+        Self {
+            role,
+            content: content.into(),
+            tool_calls: None,
+            tool_call_id: None,
+        }
     }
 
     pub fn system<S: Into<String>>(content: S) -> Self {
@@ -138,7 +147,10 @@ impl GroqMessage {
         Self::new(GroqRole::Assistant, content)
     }
 
-    pub fn assistant_with_tools<S: Into<String>>(content: S, tool_calls: Vec<GroqToolCall>) -> Self {
+    pub fn assistant_with_tools<S: Into<String>>(
+        content: S,
+        tool_calls: Vec<GroqToolCall>,
+    ) -> Self {
         Self {
             role: GroqRole::Assistant,
             content: content.into(),

@@ -14,7 +14,7 @@ pub const XAI: &str = "xai";
 /// Cerebras provider (for Llama models)
 pub const CEREBRAS: &str = "cerebras";
 
-/// Zen provider (free tier for Grok and GLM)
+/// OpenCode Zen provider (free tier models from multiple labs)
 pub const ZEN: &str = "zen";
 
 /// Voyage AI provider (text embeddings)

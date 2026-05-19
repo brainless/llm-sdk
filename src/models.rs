@@ -276,5 +276,30 @@ pub mod llama_cpp {
     pub const QWEN_3_5_0_8B: &str = QWEN_3_5_0_8B_ID;
 }
 
+/// OpenCode Zen free model constants
+pub mod zen {
+    /// Big Pickle — stealth model, free on OpenCode for a limited time
+    pub const BIG_PICKLE_ID: &str = "big-pickle";
+    pub const BIG_PICKLE_NAME: &str = "Big Pickle";
+
+    /// DeepSeek V4 Flash — free on OpenCode Zen
+    pub const DEEPSEEK_V4_FLASH_FREE_ID: &str = "deepseek-v4-flash-free";
+    pub const DEEPSEEK_V4_FLASH_FREE_NAME: &str = "DeepSeek V4 Flash Free";
+
+    /// MiniMax M2.5 — free on OpenCode Zen
+    pub const MINIMAX_M2_5_FREE_ID: &str = "minimax-m2.5-free";
+    pub const MINIMAX_M2_5_FREE_NAME: &str = "MiniMax M2.5 Free";
+
+    /// Nemotron 3 Super — free on OpenCode Zen
+    pub const NEMOTRON_3_SUPER_FREE_ID: &str = "nemotron-3-super-free";
+    pub const NEMOTRON_3_SUPER_FREE_NAME: &str = "Nemotron 3 Super Free";
+
+    // Shorthand aliases
+    pub const BIG_PICKLE: &str = BIG_PICKLE_ID;
+    pub const DEEPSEEK_V4_FLASH_FREE: &str = DEEPSEEK_V4_FLASH_FREE_ID;
+    pub const MINIMAX_M2_5_FREE: &str = MINIMAX_M2_5_FREE_ID;
+    pub const NEMOTRON_3_SUPER_FREE: &str = NEMOTRON_3_SUPER_FREE_ID;
+}
+
 // Re-export for convenience
 pub use claude::*;

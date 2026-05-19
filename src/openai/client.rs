@@ -285,10 +285,8 @@ impl crate::client::LlmClient for OpenAIClient {
                 let name = item.name.as_ref()?;
                 let call_id = item.call_id.as_ref()?;
                 let arguments_str = item.arguments.as_deref().unwrap_or("{}");
-                let arguments: serde_json::Value =
-                    serde_json::from_str(arguments_str).unwrap_or(serde_json::Value::Object(
-                        serde_json::Map::new(),
-                    ));
+                let arguments: serde_json::Value = serde_json::from_str(arguments_str)
+                    .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
                 Some(crate::tools::ToolCall::new(
                     call_id.clone(),
                     name.clone(),

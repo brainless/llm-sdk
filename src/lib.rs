@@ -140,13 +140,14 @@ pub mod providers;
 pub mod tools;
 pub mod types;
 pub mod voyage;
+pub mod zen;
 
 // Provider-specific exports
 pub use gemini::GeminiClient;
 pub use glm::cerebras::CerebrasGlmClient;
-pub use glm::zen::ZenGlmClient;
 pub use grok::xai::XaiGrokClient;
 pub use grok::zen::ZenGrokClient;
+pub use zen::OpenCodeZenClient;
 pub use groq::GroqClient;
 pub use llama_cpp::LlamaCppClient;
 pub use ollama::OllamaClient;
@@ -163,6 +164,9 @@ pub use grok::xai::XaiGrokClient as GrokClient;
 
 #[deprecated(since = "0.2.0", note = "Use CerebrasGlmClient explicitly")]
 pub use glm::cerebras::CerebrasGlmClient as GlmClient;
+
+#[deprecated(since = "0.2.0", note = "Use OpenCodeZenClient from the zen module")]
+pub use zen::OpenCodeZenClient as ZenGlmClient;
 
 #[cfg(test)]
 mod tests {

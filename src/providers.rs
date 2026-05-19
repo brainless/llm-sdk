@@ -31,3 +31,6 @@ pub const LLAMA_CPP: &str = "llama_cpp";
 
 /// Groq provider
 pub const GROQ: &str = "groq";
+
+/// OpenRouter provider (multi-model proxy)
+pub const OPENROUTER: &str = "openrouter";

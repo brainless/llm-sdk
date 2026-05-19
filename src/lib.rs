@@ -132,6 +132,7 @@ pub mod glm;
 pub mod grok;
 pub mod groq;
 pub mod llama_cpp;
+pub mod openrouter;
 pub mod model_metadata;
 pub mod models;
 pub mod ollama;

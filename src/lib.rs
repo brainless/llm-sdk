@@ -132,11 +132,11 @@ pub mod glm;
 pub mod grok;
 pub mod groq;
 pub mod llama_cpp;
-pub mod openrouter;
 pub mod model_metadata;
 pub mod models;
 pub mod ollama;
 pub mod openai;
+pub mod openrouter;
 pub mod providers;
 pub mod tools;
 pub mod types;
@@ -148,10 +148,10 @@ pub use gemini::GeminiClient;
 pub use glm::cerebras::CerebrasGlmClient;
 pub use grok::xai::XaiGrokClient;
 pub use grok::zen::ZenGrokClient;
-pub use zen::OpenCodeZenClient;
 pub use groq::GroqClient;
 pub use llama_cpp::LlamaCppClient;
 pub use ollama::OllamaClient;
+pub use zen::OpenCodeZenClient;
 
 // Tool exports
 pub use tools::{Tool, ToolCall, ToolChoice, ToolResult};

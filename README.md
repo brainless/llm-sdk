@@ -13,6 +13,8 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **Gemini support**: Google Gemini 3 Pro and Flash with reasoning capabilities
 - **Grok support**: xAI and Zen (free) Grok integration with OpenAI-compatible API
 - **GLM support**: Cerebras GLM models with OpenAI-compatible API
+- **Groq support**: Groq Chat Completions API with tool use
+- **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
@@ -197,6 +199,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Usage: {} input tokens, {} output tokens",
         response.usage.prompt_tokens, response.usage.completion_tokens
     );
+    Ok(())
+}
+```
+
+### OpenRouter
+
+OpenRouter proxies many models through an OpenAI-compatible Chat Completions API. Free models
+are not hardcoded — discover the current free programming models at runtime, then pick one.
+
+```rust
+use nocodo_llm_sdk::openrouter::OpenRouterClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create client with your OpenRouter API key
+    let client = OpenRouterClient::new("your-openrouter-api-key")?;
+
+    // Discover free programming models available right now
+    let models = client.list_free_programming_models().await?;
+    let model_id = &models[0].id;
+
+    // Build and send a message
+    let response = client
+        .with_model(model_id)
+        .message_builder()
+        .model(model_id)
+        .max_tokens(1024)
+        .user_message("Write a Rust function to reverse a string.")
+        .send()
+        .await?;
+
+    println!("OpenRouter: {}", response.choices[0].message.content);
     Ok(())
 }
 ```
@@ -654,6 +688,14 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `with_base_url(url: impl Into<String>) -> Self`: Set custom API base URL
 - `message_builder() -> GlmMessageBuilder`: Start building a message request
 
+### OpenRouterClient
+
+- `new(api_key: impl Into<String>) -> Result<Self>`: Create a new client
+- `with_model(model: impl Into<String>) -> Self`: Set the model used by the `LlmClient` trait's `complete()`
+- `with_base_url(url: impl Into<String>) -> Self`: Set custom API base URL
+- `list_free_programming_models() -> Result<Vec<OpenRouterModelInfo>>`: Discover currently free programming models
+- `message_builder() -> OpenRouterMessageBuilder`: Start building a message request
+
 ### OpenAIClient
 
 - `new(api_key: impl Into<String>) -> Result<Self>`: Create a new client
@@ -673,7 +715,7 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `with_base_url(url: impl Into<String>) -> Self`: Set custom API base URL
 - `message_builder() -> LlamaCppMessageBuilder`: Start building a message request
 
-### MessageBuilder (Claude, Grok & GLM)
+### MessageBuilder (Claude, Grok, GLM & OpenRouter)
 
 - `model(model: impl Into<String>) -> Self`: Set the model
 - `max_tokens(tokens: u32) -> Self`: Set maximum tokens
@@ -686,7 +728,9 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `stop_sequences(sequences: Vec<String>) -> Self`: Set stop sequences
 - `send() -> Result<Response>`: Send the request
 
-Note: Claude also supports `system()` for system prompts, while Grok uses `system_message()`.
+Note: Claude also supports `system()` for system prompts, while Grok and OpenRouter use `system_message()`.
+OpenRouter's builder also supports `tool_choice(choice: ToolChoice) -> Self`, `response_format(format: OpenRouterResponseFormat) -> Self`,
+and `tool_result(result: ToolResult) -> Self` for feeding tool outputs back into the conversation.
 
 ### MessageBuilder (Gemini)
 
@@ -738,6 +782,9 @@ XAI_API_KEY=your-key-here cargo test --test grok_integration -- --ignored
 
 # GLM integration tests
 CEREBRAS_API_KEY=your-key-here cargo test --test glm_integration -- --ignored
+
+# OpenRouter integration tests
+OPENROUTER_API_KEY=your-key-here cargo test --test openrouter_integration -- --ignored
 ```
 
 ## Examples
@@ -768,6 +815,9 @@ This SDK is in active development. v0.1 provides Claude and Grok support with a 
   - Models: grok-code-fast-1, grok-beta, grok-vision-beta
 - **GLM** (Cerebras): OpenAI-compatible API
   - Models: zai-glm-4.6, llama-3.3-70b
+- **Groq**: OpenAI-compatible Chat Completions API with tool use
+- **OpenRouter**: Multi-model proxy, OpenAI-compatible Chat Completions API
+  - No fixed model list — call `list_free_programming_models()` to discover free models at runtime
 - **Ollama** (Local): `/api/chat` endpoint
   - Models: local models installed in Ollama
 - **llama.cpp** (Local): OpenAI-compatible API

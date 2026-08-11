@@ -13,7 +13,7 @@ async fn test_openrouter_empty_api_key() {
 #[tokio::test]
 async fn test_openrouter_no_model_complete_fails() {
     use llm_sdk::client::LlmClient;
-    use llm_sdk::types::{CompletionRequest, Message, Role, ContentBlock};
+    use llm_sdk::types::{CompletionRequest, ContentBlock, Message, Role};
 
     let client = OpenRouterClient::new("fake-key").expect("Failed to create client");
 
@@ -21,7 +21,9 @@ async fn test_openrouter_no_model_complete_fails() {
         model: String::new(),
         messages: vec![Message {
             role: Role::User,
-            content: vec![ContentBlock::Text { text: "Hello".to_string() }],
+            content: vec![ContentBlock::Text {
+                text: "Hello".to_string(),
+            }],
             tool_call_id: None,
             tool_name: None,
         }],
@@ -115,7 +117,7 @@ async fn test_complete_with_free_model() {
 #[ignore] // Requires OPENROUTER_API_KEY environment variable
 async fn test_complete_via_llm_client_trait() {
     use llm_sdk::client::LlmClient;
-    use llm_sdk::types::{CompletionRequest, Message, Role, ContentBlock};
+    use llm_sdk::types::{CompletionRequest, ContentBlock, Message, Role};
 
     let api_key = std::env::var("OPENROUTER_API_KEY").expect("OPENROUTER_API_KEY not set");
     let client = OpenRouterClient::new(api_key).expect("Failed to create client");

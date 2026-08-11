@@ -174,21 +174,26 @@ impl OpenRouterClient {
 
 impl OpenRouterChatCompletionResponse {
     pub fn tool_calls(&self) -> Option<Vec<crate::tools::ToolCall>> {
-        self.choices.first()?.message.tool_calls.as_ref().map(|calls| {
-            calls
-                .iter()
-                .map(|call| {
-                    let arguments: serde_json::Value =
-                        serde_json::from_str(&call.function.arguments)
-                            .unwrap_or(serde_json::Value::Null);
-                    crate::tools::ToolCall::new(
-                        call.id.clone(),
-                        call.function.name.clone(),
-                        arguments,
-                    )
-                })
-                .collect()
-        })
+        self.choices
+            .first()?
+            .message
+            .tool_calls
+            .as_ref()
+            .map(|calls| {
+                calls
+                    .iter()
+                    .map(|call| {
+                        let arguments: serde_json::Value =
+                            serde_json::from_str(&call.function.arguments)
+                                .unwrap_or(serde_json::Value::Null);
+                        crate::tools::ToolCall::new(
+                            call.id.clone(),
+                            call.function.name.clone(),
+                            arguments,
+                        )
+                    })
+                    .collect()
+            })
     }
 }
 

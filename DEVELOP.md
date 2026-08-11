@@ -2,7 +2,7 @@
 
 ## Overview
 
-A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Ollama, llama.cpp, OpenAI, and Voyage AI.
+A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, Ollama, llama.cpp, OpenAI, and Voyage AI.
 
 **Crate**: `llm-sdk` v0.1.12  
 **Edition**: 2021
@@ -42,12 +42,14 @@ src/
 │   ├── cerebras/       # Paid tier
 │   └── zai/            # zAI provider
 ├── zen/                # OpenCode Zen (multi-lab free models)
+├── groq/               # Groq (Chat Completions API)
+├── openrouter/         # OpenRouter (multi-model proxy, free model discovery)
 ├── ollama/             # Local models via /api/chat
 ├── llama_cpp/          # Local models via OpenAI API
 ├── openai/             # GPT-5 via Responses API
 └── voyage/             # Text embeddings
 
-examples/               # 16 runnable examples
+examples/               # 14 runnable examples
 tests/                  # 13 integration tests
 bin/test_runner.rs      # Automated test runner with TOML config
 ```
@@ -70,6 +72,7 @@ cargo test
 ```bash
 # Manual
 ANTHROPIC_API_KEY=xxx cargo test --test claude_integration -- --ignored
+OPENROUTER_API_KEY=xxx cargo test --test openrouter_integration -- --ignored
 
 # Or use test runner with TOML config
 cargo run --bin llm-test-runner --features test-runner -- config.toml
@@ -140,6 +143,10 @@ Located in `src/models.rs`:
 - `GPT_5_MINI`, `GPT_5_NANO`
 - `VOYAGE_4_LITE`, `VOYAGE_4`
 - `ZAI_GLM_4_6`, etc.
+
+OpenRouter has no hardcoded model constants — its free-tier catalog changes frequently, so
+`OpenRouterClient::list_free_programming_models()` discovers current free models at runtime
+instead.
 
 ## Error Codes
 

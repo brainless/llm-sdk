@@ -22,6 +22,33 @@ pub struct OpenRouterChatCompletionRequest {
     pub tool_choice: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<OpenRouterResponseFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<OpenRouterProviderPreferences>,
+}
+
+/// OpenRouter provider-routing preferences for a chat completion.
+///
+/// Every field is optional so callers can opt into only the routing guarantees
+/// they require while preserving OpenRouter's defaults otherwise.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenRouterProviderPreferences {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_fallbacks: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub require_parameters: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_collection: Option<OpenRouterDataCollection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zdr: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenRouterDataCollection {
+    Allow,
+    Deny,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,9 +78,21 @@ pub struct OpenRouterChatCompletionResponse {
     pub object: Option<String>,
     pub created: u64,
     pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
     pub choices: Vec<OpenRouterChoice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<OpenRouterUsage>,
+}
+
+/// A parsed completion together with the exact successful response body.
+///
+/// Keeping the raw bytes lets applications calculate an audit hash without
+/// forcing the SDK to choose a hashing algorithm or retain provider payloads.
+#[derive(Debug, Clone)]
+pub struct OpenRouterChatCompletionResult {
+    pub response: OpenRouterChatCompletionResponse,
+    pub raw_response: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,5 +210,67 @@ pub struct OpenRouterPricing {
 impl OpenRouterPricing {
     pub fn is_free(&self) -> bool {
         self.prompt == "0" && self.completion == "0"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn provider_preferences_serialize_with_openrouter_field_names() {
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![OpenRouterMessage::user("hello")],
+            max_completion_tokens: Some(64),
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            provider: Some(OpenRouterProviderPreferences {
+                order: Some(vec!["Provider A".into()]),
+                allow_fallbacks: Some(false),
+                require_parameters: Some(true),
+                data_collection: Some(OpenRouterDataCollection::Deny),
+                zdr: Some(true),
+            }),
+        };
+
+        let value = serde_json::to_value(request).unwrap();
+        assert_eq!(
+            value["provider"],
+            serde_json::json!({
+                "order": ["Provider A"],
+                "allow_fallbacks": false,
+                "require_parameters": true,
+                "data_collection": "deny",
+                "zdr": true
+            })
+        );
+    }
+
+    #[test]
+    fn absent_provider_preferences_remain_omitted() {
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            provider: None,
+        };
+
+        assert!(serde_json::to_value(request)
+            .unwrap()
+            .get("provider")
+            .is_none());
     }
 }

@@ -8,8 +8,9 @@ use crate::{
         tools::OpenRouterToolFormat,
         types::{
             OpenRouterChatCompletionRequest, OpenRouterChatCompletionResponse,
-            OpenRouterErrorResponse, OpenRouterMessage, OpenRouterModelInfo,
-            OpenRouterModelsResponse, OpenRouterResponseFormat, OpenRouterRole, OpenRouterToolCall,
+            OpenRouterChatCompletionResult, OpenRouterErrorResponse, OpenRouterMessage,
+            OpenRouterModelInfo, OpenRouterModelsResponse, OpenRouterProviderPreferences,
+            OpenRouterResponseFormat, OpenRouterRole, OpenRouterToolCall,
         },
     },
     tools::ProviderToolFormat,
@@ -40,6 +41,7 @@ pub struct OpenRouterClient {
     model: Option<String>,
     base_url: String,
     http_client: reqwest::Client,
+    provider_preferences: Option<OpenRouterProviderPreferences>,
 }
 
 impl OpenRouterClient {
@@ -59,6 +61,7 @@ impl OpenRouterClient {
             model: None,
             base_url: "https://openrouter.ai/api".to_string(),
             http_client,
+            provider_preferences: None,
         })
     }
 
@@ -70,6 +73,12 @@ impl OpenRouterClient {
 
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into();
+        self
+    }
+
+    /// Set provider-routing preferences used by [`crate::client::LlmClient::complete`].
+    pub fn with_provider_preferences(mut self, preferences: OpenRouterProviderPreferences) -> Self {
+        self.provider_preferences = Some(preferences);
         self
     }
 
@@ -122,6 +131,17 @@ impl OpenRouterClient {
         &self,
         request: OpenRouterChatCompletionRequest,
     ) -> Result<OpenRouterChatCompletionResponse, LlmError> {
+        Ok(self
+            .create_chat_completion_with_metadata(request)
+            .await?
+            .response)
+    }
+
+    /// Create a completion and retain the exact successful response bytes.
+    pub async fn create_chat_completion_with_metadata(
+        &self,
+        request: OpenRouterChatCompletionRequest,
+    ) -> Result<OpenRouterChatCompletionResult, LlmError> {
         let url = format!("{}/v1/chat/completions", self.base_url);
         let headers = self.auth_headers()?;
 
@@ -135,15 +155,20 @@ impl OpenRouterClient {
             .map_err(|e| LlmError::Network { source: e })?;
 
         let status = response.status();
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| LlmError::Network { source: e })?;
         if status.is_success() {
-            let resp: OpenRouterChatCompletionResponse = response
-                .json()
-                .await
+            let resp: OpenRouterChatCompletionResponse = serde_json::from_slice(&body)
                 .map_err(|e| LlmError::internal(format!("Failed to parse response: {}", e)))?;
-            return Ok(resp);
+            return Ok(OpenRouterChatCompletionResult {
+                response: resp,
+                raw_response: body.to_vec(),
+            });
         }
 
-        let error_text = response.text().await.unwrap_or_default();
+        let error_text = String::from_utf8_lossy(&body).into_owned();
         if let Ok(err) = serde_json::from_str::<OpenRouterErrorResponse>(&error_text) {
             match status {
                 reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN => {
@@ -291,6 +316,7 @@ impl crate::client::LlmClient for OpenRouterClient {
             tools,
             tool_choice,
             response_format,
+            provider: self.provider_preferences.clone(),
         };
 
         let or_response = self.create_chat_completion(or_request).await?;
@@ -339,5 +365,55 @@ impl crate::client::LlmClient for OpenRouterClient {
 
     fn model_name(&self) -> &str {
         self.model.as_deref().unwrap_or("")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn metadata_completion_preserves_raw_body_and_routing_identity() {
+        let mut server = mockito::Server::new_async().await;
+        let raw = r#"{"id":"generation-1","created":123,"model":"author/model","provider":"Provider A","choices":[{"index":0,"message":{"role":"assistant","content":"{}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":2,"total_tokens":7}}"#;
+        let mock = server
+            .mock("POST", "/v1/chat/completions")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(raw)
+            .create_async()
+            .await;
+        let client = OpenRouterClient::new("test-key")
+            .unwrap()
+            .with_base_url(server.url());
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![OpenRouterMessage::user("hello")],
+            max_completion_tokens: Some(64),
+            temperature: Some(0.0),
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: Some(OpenRouterResponseFormat::json_object()),
+            provider: Some(OpenRouterProviderPreferences {
+                order: Some(vec!["Provider A".into()]),
+                allow_fallbacks: Some(false),
+                require_parameters: Some(true),
+                data_collection: Some(crate::openrouter::types::OpenRouterDataCollection::Deny),
+                zdr: Some(true),
+            }),
+        };
+
+        let result = client
+            .create_chat_completion_with_metadata(request)
+            .await
+            .unwrap();
+
+        mock.assert_async().await;
+        assert_eq!(result.response.model, "author/model");
+        assert_eq!(result.response.provider.as_deref(), Some("Provider A"));
+        assert_eq!(result.raw_response, raw.as_bytes());
     }
 }

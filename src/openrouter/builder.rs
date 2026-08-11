@@ -5,7 +5,8 @@ use crate::{
         tools::OpenRouterToolFormat,
         types::{
             OpenRouterChatCompletionRequest, OpenRouterChatCompletionResponse, OpenRouterMessage,
-            OpenRouterResponseFormat, OpenRouterRole, OpenRouterTool,
+            OpenRouterProviderPreferences, OpenRouterResponseFormat, OpenRouterRole,
+            OpenRouterTool,
         },
     },
     tools::{ProviderToolFormat, Tool, ToolChoice, ToolResult},
@@ -22,6 +23,7 @@ pub struct OpenRouterMessageBuilder<'a> {
     tools: Option<Vec<OpenRouterTool>>,
     tool_choice: Option<serde_json::Value>,
     response_format: Option<OpenRouterResponseFormat>,
+    provider_preferences: Option<OpenRouterProviderPreferences>,
 }
 
 impl<'a> OpenRouterMessageBuilder<'a> {
@@ -37,6 +39,7 @@ impl<'a> OpenRouterMessageBuilder<'a> {
             tools: None,
             tool_choice: None,
             response_format: None,
+            provider_preferences: None,
         }
     }
 
@@ -117,6 +120,11 @@ impl<'a> OpenRouterMessageBuilder<'a> {
         self
     }
 
+    pub fn provider_preferences(mut self, preferences: OpenRouterProviderPreferences) -> Self {
+        self.provider_preferences = Some(preferences);
+        self
+    }
+
     pub fn tool_result(mut self, result: ToolResult) -> Self {
         self.messages.push(OpenRouterMessage::tool_result(
             result.tool_call_id(),
@@ -139,6 +147,7 @@ impl<'a> OpenRouterMessageBuilder<'a> {
             tools: self.tools,
             tool_choice: self.tool_choice,
             response_format: self.response_format,
+            provider: self.provider_preferences,
         };
 
         self.client.create_chat_completion(request).await

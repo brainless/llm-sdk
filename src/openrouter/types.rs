@@ -7,6 +7,7 @@ pub struct OpenRouterChatCompletionRequest {
     pub model: String,
     pub messages: Vec<OpenRouterMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "max_tokens")]
     pub max_completion_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
@@ -118,6 +119,14 @@ pub struct OpenRouterErrorResponse {
 pub struct OpenRouterError {
     pub message: String,
     pub code: Option<serde_json::Value>,
+    #[serde(default)]
+    pub metadata: Option<OpenRouterErrorMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenRouterErrorMetadata {
+    #[serde(default)]
+    pub error_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -240,6 +249,8 @@ mod tests {
         };
 
         let value = serde_json::to_value(request).unwrap();
+        assert_eq!(value["max_tokens"], 64);
+        assert!(value.get("max_completion_tokens").is_none());
         assert_eq!(
             value["provider"],
             serde_json::json!({

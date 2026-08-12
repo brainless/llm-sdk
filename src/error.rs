@@ -3,6 +3,10 @@ use thiserror::Error;
 /// Comprehensive error types for LLM operations
 #[derive(Error, Debug)]
 pub enum LlmError {
+    /// Sanitized OpenRouter HTTP error metadata.
+    #[error("OpenRouter API error (status {status}, error_type {error_type})")]
+    OpenRouterApi { status: u16, error_type: String },
+
     /// Authentication failed (HTTP 401)
     #[error("Authentication failed: {message}")]
     Authentication { message: String },
@@ -61,6 +65,22 @@ pub enum LlmError {
 }
 
 impl LlmError {
+    /// Create an OpenRouter error without retaining its provider message/body.
+    pub fn openrouter_api_error(status: u16, error_type: impl Into<String>) -> Self {
+        Self::OpenRouterApi {
+            status,
+            error_type: error_type.into(),
+        }
+    }
+
+    /// Return sanitized OpenRouter diagnostic fields, when available.
+    pub fn openrouter_diagnostic(&self) -> Option<(u16, &str)> {
+        match self {
+            Self::OpenRouterApi { status, error_type } => Some((*status, error_type)),
+            _ => None,
+        }
+    }
+
     /// Create an authentication error
     pub fn authentication<S: Into<String>>(message: S) -> Self {
         Self::Authentication {

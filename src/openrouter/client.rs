@@ -170,18 +170,12 @@ impl OpenRouterClient {
 
         let error_text = String::from_utf8_lossy(&body).into_owned();
         if let Ok(err) = serde_json::from_str::<OpenRouterErrorResponse>(&error_text) {
-            match status {
-                reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN => {
-                    Err(LlmError::authentication(err.error.message))
-                }
-                reqwest::StatusCode::BAD_REQUEST => {
-                    Err(LlmError::invalid_request(err.error.message))
-                }
-                reqwest::StatusCode::TOO_MANY_REQUESTS => {
-                    Err(LlmError::rate_limit(err.error.message, None))
-                }
-                _ => Err(LlmError::api_error(status.as_u16(), err.error.message)),
-            }
+            let error_type = err
+                .error
+                .metadata
+                .and_then(|metadata| metadata.error_type)
+                .unwrap_or_else(|| "unknown".to_string());
+            Err(LlmError::openrouter_api_error(status.as_u16(), error_type))
         } else {
             match status {
                 reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN => {
@@ -415,5 +409,27 @@ mod tests {
         assert_eq!(result.response.model, "author/model");
         assert_eq!(result.response.provider.as_deref(), Some("Provider A"));
         assert_eq!(result.raw_response, raw.as_bytes());
+    }
+
+    #[test]
+    fn openrouter_error_retains_only_status_and_canonical_error_type() {
+        let parsed: OpenRouterErrorResponse = serde_json::from_str(
+            r#"{"error":{"code":503,"message":"sensitive provider detail","metadata":{"error_type":"provider_overloaded","provider_code":"private"}}}"#,
+        )
+        .unwrap();
+        let error = LlmError::openrouter_api_error(
+            503,
+            parsed
+                .error
+                .metadata
+                .and_then(|metadata| metadata.error_type)
+                .unwrap(),
+        );
+        assert_eq!(
+            error.openrouter_diagnostic(),
+            Some((503, "provider_overloaded"))
+        );
+        assert!(!error.to_string().contains("sensitive provider detail"));
+        assert!(!error.to_string().contains("private"));
     }
 }

@@ -120,6 +120,18 @@ impl<'a> OpenRouterMessageBuilder<'a> {
         self
     }
 
+    /// Require strict structured output matching `schema`.
+    ///
+    /// Convenience wrapper over [`Self::response_format`] with
+    /// [`OpenRouterResponseFormat::json_schema`].
+    pub fn json_schema_response_format(
+        self,
+        name: impl Into<String>,
+        schema: serde_json::Value,
+    ) -> Self {
+        self.response_format(OpenRouterResponseFormat::json_schema(name, schema))
+    }
+
     pub fn provider_preferences(mut self, preferences: OpenRouterProviderPreferences) -> Self {
         self.provider_preferences = Some(preferences);
         self

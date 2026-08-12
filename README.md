@@ -693,6 +693,8 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `new(api_key: impl Into<String>) -> Result<Self>`: Create a new client
 - `with_model(model: impl Into<String>) -> Self`: Set the model used by the `LlmClient` trait's `complete()`
 - `with_base_url(url: impl Into<String>) -> Self`: Set custom API base URL
+- `with_provider_preferences(prefs: OpenRouterProviderPreferences) -> Self`: Set provider routing used by `complete()`
+- `with_response_format(format: OpenRouterResponseFormat) -> Self`: Set the response format used by `complete()` (takes precedence over `CompletionRequest::response_format`, which cannot express a strict JSON schema)
 - `list_free_programming_models() -> Result<Vec<OpenRouterModelInfo>>`: Discover currently free programming models
 - `message_builder() -> OpenRouterMessageBuilder`: Start building a message request
 
@@ -730,7 +732,39 @@ See `examples/tool_calling_*.rs` for complete examples.
 
 Note: Claude also supports `system()` for system prompts, while Grok and OpenRouter use `system_message()`.
 OpenRouter's builder also supports `tool_choice(choice: ToolChoice) -> Self`, `response_format(format: OpenRouterResponseFormat) -> Self`,
-and `tool_result(result: ToolResult) -> Self` for feeding tool outputs back into the conversation.
+`json_schema_response_format(name, schema: serde_json::Value) -> Self`, and `tool_result(result: ToolResult) -> Self` for feeding tool
+outputs back into the conversation.
+
+#### OpenRouter response formats
+
+`OpenRouterResponseFormat` has three constructors:
+
+| Constructor | Serialized wire shape |
+|-------------|-----------------------|
+| `text()` | `{"type":"text"}` |
+| `json_object()` | `{"type":"json_object"}` |
+| `json_schema(name, schema)` | `{"type":"json_schema","json_schema":{"name":"<name>","strict":true,"schema":{...}}}` |
+
+`json_schema` is always strict — OpenRouter only guarantees schema conformance for strict schemas.
+
+```rust
+use nocodo_llm_sdk::openrouter::OpenRouterResponseFormat;
+
+let schema = serde_json::json!({
+    "type": "object",
+    "properties": {"answer": {"type": "string"}},
+    "required": ["answer"],
+    "additionalProperties": false
+});
+
+let response = client
+    .message_builder()
+    .model(model_id)
+    .user_message("Answer as JSON.")
+    .response_format(OpenRouterResponseFormat::json_schema("answer_schema", schema))
+    .send()
+    .await?;
+```
 
 ### MessageBuilder (Gemini)
 

@@ -134,24 +134,55 @@ pub struct OpenRouterErrorMetadata {
 pub enum OpenRouterResponseFormatType {
     Text,
     JsonObject,
+    JsonSchema,
+}
+
+/// Strict JSON-schema payload sent under `response_format.json_schema`.
+///
+/// `strict` is always `true`: OpenRouter only guarantees schema conformance for
+/// strict schemas, and a non-strict schema would silently degrade to a hint.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OpenRouterJsonSchema {
+    pub name: String,
+    pub strict: bool,
+    pub schema: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct OpenRouterResponseFormat {
     #[serde(rename = "type")]
     pub format_type: OpenRouterResponseFormatType,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<OpenRouterJsonSchema>,
 }
 
 impl OpenRouterResponseFormat {
     pub fn text() -> Self {
         Self {
             format_type: OpenRouterResponseFormatType::Text,
+            json_schema: None,
         }
     }
 
     pub fn json_object() -> Self {
         Self {
             format_type: OpenRouterResponseFormatType::JsonObject,
+            json_schema: None,
+        }
+    }
+
+    /// Request strict structured output validated against `schema`.
+    ///
+    /// Serializes to:
+    /// `{"type":"json_schema","json_schema":{"name":..,"strict":true,"schema":{..}}}`
+    pub fn json_schema(name: impl Into<String>, schema: serde_json::Value) -> Self {
+        Self {
+            format_type: OpenRouterResponseFormatType::JsonSchema,
+            json_schema: Some(OpenRouterJsonSchema {
+                name: name.into(),
+                strict: true,
+                schema,
+            }),
         }
     }
 }
@@ -283,5 +314,67 @@ mod tests {
             .unwrap()
             .get("provider")
             .is_none());
+    }
+
+    #[test]
+    fn json_object_response_format_stays_a_bare_type_tag() {
+        assert_eq!(
+            serde_json::to_value(OpenRouterResponseFormat::json_object()).unwrap(),
+            serde_json::json!({"type": "json_object"})
+        );
+        assert_eq!(
+            serde_json::to_value(OpenRouterResponseFormat::text()).unwrap(),
+            serde_json::json!({"type": "text"})
+        );
+    }
+
+    #[test]
+    fn json_schema_response_format_serializes_to_openrouter_wire_shape() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {"answer": {"type": "string"}},
+            "required": ["answer"],
+            "additionalProperties": false
+        });
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![OpenRouterMessage::user("hello")],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: Some(OpenRouterResponseFormat::json_schema(
+                "task_zero_answer",
+                schema.clone(),
+            )),
+            provider: None,
+        };
+
+        let value = serde_json::to_value(request).unwrap();
+        assert_eq!(
+            value["response_format"],
+            serde_json::json!({
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "task_zero_answer",
+                    "strict": true,
+                    "schema": schema
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn json_schema_response_format_round_trips() {
+        let format =
+            OpenRouterResponseFormat::json_schema("plan", serde_json::json!({"type": "object"}));
+        let encoded = serde_json::to_string(&format).unwrap();
+        assert_eq!(
+            serde_json::from_str::<OpenRouterResponseFormat>(&encoded).unwrap(),
+            format
+        );
     }
 }

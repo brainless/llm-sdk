@@ -42,6 +42,7 @@ pub struct OpenRouterClient {
     base_url: String,
     http_client: reqwest::Client,
     provider_preferences: Option<OpenRouterProviderPreferences>,
+    response_format: Option<OpenRouterResponseFormat>,
 }
 
 impl OpenRouterClient {
@@ -62,6 +63,7 @@ impl OpenRouterClient {
             base_url: "https://openrouter.ai/api".to_string(),
             http_client,
             provider_preferences: None,
+            response_format: None,
         })
     }
 
@@ -79,6 +81,16 @@ impl OpenRouterClient {
     /// Set provider-routing preferences used by [`crate::client::LlmClient::complete`].
     pub fn with_provider_preferences(mut self, preferences: OpenRouterProviderPreferences) -> Self {
         self.provider_preferences = Some(preferences);
+        self
+    }
+
+    /// Set the response format used by [`crate::client::LlmClient::complete`].
+    ///
+    /// Takes precedence over [`crate::types::CompletionRequest::response_format`],
+    /// which cannot express a strict JSON schema. Use it with
+    /// [`OpenRouterResponseFormat::json_schema`] for structured output.
+    pub fn with_response_format(mut self, format: OpenRouterResponseFormat) -> Self {
+        self.response_format = Some(format);
         self
     }
 
@@ -294,9 +306,11 @@ impl crate::client::LlmClient for OpenRouterClient {
             .tool_choice
             .map(|c| OpenRouterToolFormat::to_provider_tool_choice(&c));
 
-        let response_format = request.response_format.map(|rf| match rf {
-            crate::types::ResponseFormat::Text => OpenRouterResponseFormat::text(),
-            crate::types::ResponseFormat::JsonObject => OpenRouterResponseFormat::json_object(),
+        let response_format = self.response_format.clone().or_else(|| {
+            request.response_format.map(|rf| match rf {
+                crate::types::ResponseFormat::Text => OpenRouterResponseFormat::text(),
+                crate::types::ResponseFormat::JsonObject => OpenRouterResponseFormat::json_object(),
+            })
         });
 
         let or_request = OpenRouterChatCompletionRequest {
@@ -409,6 +423,70 @@ mod tests {
         assert_eq!(result.response.model, "author/model");
         assert_eq!(result.response.provider.as_deref(), Some("Provider A"));
         assert_eq!(result.raw_response, raw.as_bytes());
+    }
+
+    #[tokio::test]
+    async fn client_response_format_sends_strict_json_schema_on_the_wire() {
+        use crate::client::LlmClient;
+
+        let mut server = mockito::Server::new_async().await;
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {"answer": {"type": "string"}},
+            "required": ["answer"],
+            "additionalProperties": false
+        });
+        let mock = server
+            .mock("POST", "/v1/chat/completions")
+            .match_body(mockito::Matcher::PartialJson(serde_json::json!({
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "task_zero_answer",
+                        "strict": true,
+                        "schema": schema
+                    }
+                }
+            })))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"{"id":"generation-1","created":123,"model":"author/model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"answer\":\"ok\"}"},"finish_reason":"stop"}]}"#,
+            )
+            .create_async()
+            .await;
+
+        let client = OpenRouterClient::new("test-key")
+            .unwrap()
+            .with_base_url(server.url())
+            .with_model("author/model")
+            .with_response_format(OpenRouterResponseFormat::json_schema(
+                "task_zero_answer",
+                schema.clone(),
+            ));
+
+        let request = crate::types::CompletionRequest {
+            messages: vec![crate::types::Message {
+                role: crate::types::Role::User,
+                content: vec![crate::types::ContentBlock::Text {
+                    text: "hello".into(),
+                }],
+                tool_call_id: None,
+                tool_name: None,
+            }],
+            max_tokens: 64,
+            model: "author/model".into(),
+            system: None,
+            temperature: None,
+            top_p: None,
+            stop_sequences: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+        };
+
+        client.complete(request).await.unwrap();
+        mock.assert_async().await;
     }
 
     #[test]

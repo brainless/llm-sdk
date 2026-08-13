@@ -272,8 +272,14 @@ pub mod llama_cpp {
     pub const QWEN_3_5_0_8B_ID: &str = "unsloth/Qwen3.5-0.8B-GGUF:UD-Q4_K_XL";
     pub const QWEN_3_5_0_8B_NAME: &str = "Qwen 3.5 0.8B (GGUF)";
 
+    /// LFM2.5 2.6B GGUF (LiquidAI/LFM2.5-2.6B-GGUF)
+    /// Hybrid on-device model by Liquid AI; lfm1.0 license
+    pub const LFM_2_5_2_6B_ID: &str = "LiquidAI/LFM2.5-2.6B-GGUF";
+    pub const LFM_2_5_2_6B_NAME: &str = "LFM2.5 2.6B (GGUF)";
+
     // Backwards compatibility
     pub const QWEN_3_5_0_8B: &str = QWEN_3_5_0_8B_ID;
+    pub const LFM_2_5_2_6B: &str = LFM_2_5_2_6B_ID;
 }
 
 /// OpenCode Zen free model constants

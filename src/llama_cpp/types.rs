@@ -58,6 +58,12 @@ pub struct LlamaCppMessage {
     pub role: LlamaCppRole,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    /// Reasoning/thinking content emitted alongside `content` by reasoning
+    /// models served through llama.cpp's OpenAI-compatible endpoint (a
+    /// documented llama.cpp server extension field). A model can spend its
+    /// entire token budget here and return no final `content` at all.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<LlamaCppToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,6 +75,7 @@ impl LlamaCppMessage {
         Self {
             role,
             content: Some(content.into()),
+            reasoning_content: None,
             tool_calls: None,
             tool_call_id: None,
         }
@@ -78,6 +85,7 @@ impl LlamaCppMessage {
         Self {
             role: LlamaCppRole::Tool,
             content: Some(content.into()),
+            reasoning_content: None,
             tool_calls: None,
             tool_call_id: Some(tool_call_id.into()),
         }
@@ -100,4 +108,69 @@ pub enum LlamaCppToolCall {
     Simple { name: String, arguments: String },
     /// OpenAI-style tool call format
     OpenAI(crate::openai::types::OpenAIResponseToolCall),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserializes_reasoning_content_alongside_empty_final_content() {
+        let raw = r#"{
+            "id": "chatcmpl-1",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "small-reasoner",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "reasoning_content": "thinking forever without ever answering..."
+                },
+                "finish_reason": "length"
+            }],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 512,
+                "total_tokens": 522
+            }
+        }"#;
+
+        let response: LlamaCppChatCompletionResponse = serde_json::from_str(raw).unwrap();
+        let choice = response.choices.first().unwrap();
+
+        assert_eq!(choice.finish_reason.as_deref(), Some("length"));
+        assert_eq!(choice.message.content, None);
+        assert_eq!(
+            choice.message.reasoning_content.as_deref(),
+            Some("thinking forever without ever answering...")
+        );
+        assert_eq!(response.usage.as_ref().unwrap().completion_tokens, 512);
+    }
+
+    #[test]
+    fn deserializes_without_reasoning_content_for_backward_compat() {
+        let raw = r#"{
+            "id": "chatcmpl-2",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "plain-model",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "hello"
+                },
+                "finish_reason": "stop"
+            }]
+        }"#;
+
+        let response: LlamaCppChatCompletionResponse = serde_json::from_str(raw).unwrap();
+        let choice = response.choices.first().unwrap();
+
+        assert_eq!(choice.message.content.as_deref(), Some("hello"));
+        assert_eq!(choice.message.reasoning_content, None);
+        assert!(response.usage.is_none());
+    }
 }

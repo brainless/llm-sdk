@@ -175,6 +175,7 @@ impl crate::client::LlmClient for LlamaCppClient {
             stop: request.stop_sequences,
             stream: None,
             tools,
+            tool_choice: None,
             parallel_tool_calls: None,
         };
 

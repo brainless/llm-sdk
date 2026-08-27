@@ -5,7 +5,7 @@ use crate::{
         tools::LlamaCppToolFormat,
         types::{LlamaCppChatCompletionRequest, LlamaCppMessage, LlamaCppRole},
     },
-    tools::{ProviderToolFormat, Tool},
+    tools::{ProviderToolFormat, Tool, ToolChoice},
 };
 
 /// Builder for creating llama.cpp chat completion requests
@@ -19,6 +19,7 @@ pub struct LlamaCppMessageBuilder<'a> {
     stop: Option<Vec<String>>,
     stream: Option<bool>,
     tools: Option<Vec<crate::openai::types::OpenAITool>>,
+    tool_choice: Option<ToolChoice>,
     parallel_tool_calls: Option<bool>,
 }
 
@@ -35,6 +36,7 @@ impl<'a> LlamaCppMessageBuilder<'a> {
             stop: None,
             stream: None,
             tools: None,
+            tool_choice: None,
             parallel_tool_calls: None,
         }
     }
@@ -128,6 +130,12 @@ impl<'a> LlamaCppMessageBuilder<'a> {
         self
     }
 
+    /// Set tool choice strategy
+    pub fn tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = Some(choice);
+        self
+    }
+
     /// Enable or disable parallel tool calls
     pub fn parallel_tool_calls(mut self, enabled: bool) -> Self {
         self.parallel_tool_calls = Some(enabled);
@@ -138,7 +146,13 @@ impl<'a> LlamaCppMessageBuilder<'a> {
     pub async fn send(
         self,
     ) -> Result<crate::llama_cpp::types::LlamaCppChatCompletionResponse, LlmError> {
-        let request = LlamaCppChatCompletionRequest {
+        let client = self.client;
+        let request = self.build_request()?;
+        client.create_chat_completion(request).await
+    }
+
+    fn build_request(self) -> Result<LlamaCppChatCompletionRequest, LlmError> {
+        Ok(LlamaCppChatCompletionRequest {
             model: self
                 .model
                 .ok_or_else(|| LlmError::invalid_request("Model must be specified"))?,
@@ -149,9 +163,69 @@ impl<'a> LlamaCppMessageBuilder<'a> {
             stop: self.stop,
             stream: self.stream,
             tools: self.tools,
+            tool_choice: self
+                .tool_choice
+                .as_ref()
+                .map(LlamaCppToolFormat::to_provider_tool_choice),
             parallel_tool_calls: self.parallel_tool_calls,
-        };
+        })
+    }
+}
 
-        self.client.create_chat_completion(request).await
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+    use serde_json::json;
+
+    #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+    struct PlanSubmissionParams {
+        summary: String,
+    }
+
+    #[test]
+    fn forwards_specific_tool_choice_and_parallel_tool_calls_into_request_body() {
+        let client = LlamaCppClient::new().unwrap();
+        let tool = Tool::from_type::<PlanSubmissionParams>()
+            .name("submit_plan")
+            .description("Submit the task plan")
+            .build();
+
+        let request = LlamaCppMessageBuilder::new(&client)
+            .model("qwen-test")
+            .user_message("plan the tasks")
+            .tool(tool)
+            .tool_choice(ToolChoice::Specific {
+                name: "submit_plan".to_string(),
+            })
+            .parallel_tool_calls(false)
+            .build_request()
+            .unwrap();
+
+        let body = serde_json::to_value(&request).unwrap();
+        assert_eq!(
+            body["tool_choice"],
+            json!({
+                "type": "function",
+                "function": { "name": "submit_plan" }
+            })
+        );
+        assert_eq!(body["parallel_tool_calls"], json!(false));
+    }
+
+    #[test]
+    fn omits_unset_tool_fields_from_request_body() {
+        let client = LlamaCppClient::new().unwrap();
+        let request = LlamaCppMessageBuilder::new(&client)
+            .model("qwen-test")
+            .user_message("hello")
+            .build_request()
+            .unwrap();
+
+        let body = serde_json::to_value(&request).unwrap();
+        assert!(body.get("tools").is_none());
+        assert!(body.get("tool_choice").is_none());
+        assert!(body.get("parallel_tool_calls").is_none());
     }
 }

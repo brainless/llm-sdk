@@ -23,6 +23,21 @@ pub struct LlamaCppChatCompletionRequest {
     pub tool_choice: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parallel_tool_calls: Option<bool>,
+    /// OpenAI-compatible structured-output spec, forwarded verbatim.
+    ///
+    /// mlxcel's `response_format: {"type": "json_schema", "json_schema":
+    /// {"name", "strict", "schema"}}` compiles this into an `llguidance`
+    /// grammar and constrains decoding token-by-token — a materially
+    /// different mechanism from `tools`/`tool_choice` (post-hoc text
+    /// parsing). Kept as a raw `serde_json::Value` rather than a typed
+    /// variant on the shared `crate::types::ResponseFormat` enum, mirroring
+    /// how `tool_choice` stayed llama.cpp-specific: forcing every provider
+    /// to model an embedded JSON Schema payload identically would be a
+    /// speculative generalization this one server's documented wire shape
+    /// does not need yet (see epic 011 task 1 Evidence in protopie for the
+    /// full justification).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<serde_json::Value>,
 }
 
 /// Llama.cpp chat completion response

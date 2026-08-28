@@ -177,6 +177,13 @@ impl crate::client::LlmClient for LlamaCppClient {
             tools,
             tool_choice: None,
             parallel_tool_calls: None,
+            // The generic CompletionRequest only models Text/JsonObject
+            // (crate::types::ResponseFormat); mlxcel rejects json_object
+            // outright and grammar-constrained json_schema needs an embedded
+            // schema that enum cannot carry. Callers who want constrained
+            // decoding use the builder's `.response_format_json_schema(...)`
+            // directly instead of this generic LlmClient::complete() path.
+            response_format: None,
         };
 
         let llama_response = self.create_chat_completion(llama_request).await?;

@@ -21,6 +21,7 @@ pub struct LlamaCppMessageBuilder<'a> {
     tools: Option<Vec<crate::openai::types::OpenAITool>>,
     tool_choice: Option<ToolChoice>,
     parallel_tool_calls: Option<bool>,
+    response_format: Option<serde_json::Value>,
 }
 
 impl<'a> LlamaCppMessageBuilder<'a> {
@@ -38,6 +39,7 @@ impl<'a> LlamaCppMessageBuilder<'a> {
             tools: None,
             tool_choice: None,
             parallel_tool_calls: None,
+            response_format: None,
         }
     }
 
@@ -142,6 +144,33 @@ impl<'a> LlamaCppMessageBuilder<'a> {
         self
     }
 
+    /// Request grammar-constrained JSON output matching `schema`, sent in
+    /// mlxcel's documented OpenAI-compatible wire shape:
+    /// `{"type":"json_schema","json_schema":{"name","strict","schema"}}`.
+    ///
+    /// `schema` is the raw JSON Schema document (e.g. `Tool::parameters()`
+    /// serialized to `serde_json::Value`). `strict` is forwarded as-is;
+    /// mlxcel's structured-output extraction (`extract_json_schema_from_response_format`)
+    /// currently ignores `name`/`strict` and reads only `schema`, but both
+    /// are still sent for wire compatibility with the documented
+    /// OpenAI Chat Completions shape and any future stricter validation.
+    pub fn response_format_json_schema(
+        mut self,
+        name: impl Into<String>,
+        schema: serde_json::Value,
+        strict: bool,
+    ) -> Self {
+        self.response_format = Some(serde_json::json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": name.into(),
+                "strict": strict,
+                "schema": schema,
+            }
+        }));
+        self
+    }
+
     /// Send the request and get the response
     pub async fn send(
         self,
@@ -168,6 +197,7 @@ impl<'a> LlamaCppMessageBuilder<'a> {
                 .as_ref()
                 .map(LlamaCppToolFormat::to_provider_tool_choice),
             parallel_tool_calls: self.parallel_tool_calls,
+            response_format: self.response_format,
         })
     }
 }
@@ -227,5 +257,61 @@ mod tests {
         assert!(body.get("tools").is_none());
         assert!(body.get("tool_choice").is_none());
         assert!(body.get("parallel_tool_calls").is_none());
+        assert!(body.get("response_format").is_none());
+    }
+
+    #[test]
+    fn response_format_json_schema_reaches_the_outbound_body_byte_exact() {
+        let client = LlamaCppClient::new().unwrap();
+        let schema = Tool::from_type::<PlanSubmissionParams>()
+            .name("submit_plan")
+            .description("Submit the task plan")
+            .build()
+            .parameters()
+            .clone();
+        let schema_value = serde_json::to_value(&schema).unwrap();
+
+        let request = LlamaCppMessageBuilder::new(&client)
+            .model("qwen-test")
+            .user_message("plan the tasks")
+            .response_format_json_schema("submit_plan", schema_value.clone(), true)
+            .build_request()
+            .unwrap();
+
+        let body = serde_json::to_value(&request).unwrap();
+        assert_eq!(
+            body["response_format"],
+            json!({
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "submit_plan",
+                    "strict": true,
+                    "schema": schema_value,
+                }
+            })
+        );
+        // mlxcel's own documented wire shape has exactly these three keys
+        // inside json_schema, nothing more.
+        let inner = body["response_format"]["json_schema"].as_object().unwrap();
+        let mut keys: Vec<&str> = inner.keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(keys, vec!["name", "schema", "strict"]);
+    }
+
+    #[test]
+    fn response_format_json_schema_forwards_strict_false_unchanged() {
+        let client = LlamaCppClient::new().unwrap();
+        let request = LlamaCppMessageBuilder::new(&client)
+            .model("qwen-test")
+            .user_message("plan the tasks")
+            .response_format_json_schema("submit_plan", json!({"type": "object"}), false)
+            .build_request()
+            .unwrap();
+
+        let body = serde_json::to_value(&request).unwrap();
+        assert_eq!(
+            body["response_format"]["json_schema"]["strict"],
+            json!(false)
+        );
     }
 }

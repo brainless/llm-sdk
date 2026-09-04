@@ -110,24 +110,8 @@ pub mod grok {
     pub const CODE_FAST_1: &str = CODE_FAST_1_ID;
 }
 
-/// GLM model constants (via Cerebras/zAI)
+/// GLM model constants
 pub mod glm {
-    /// Llama 3.1 8B - Fast open source model via Cerebras
-    pub const LLAMA_3_1_8B_ID: &str = "llama3.1-8b";
-    pub const LLAMA_3_1_8B_NAME: &str = "Llama 3.1 8B";
-
-    /// Llama 3.3 70B - Open source model via Cerebras
-    pub const LLAMA_3_3_70B_ID: &str = "llama-3.3-70b";
-    pub const LLAMA_3_3_70B_NAME: &str = "Llama 3.3 70B";
-
-    /// Qwen 3 235B A22B Instruct - MoE reasoning model via Cerebras (preview)
-    pub const QWEN_3_235B_ID: &str = "qwen-3-235b-a22b-instruct-2507";
-    pub const QWEN_3_235B_NAME: &str = "Qwen 3 235B A22B Instruct";
-
-    /// GPT OSS 120B via Cerebras - reasoning effort: low/medium/high
-    pub const GPT_OSS_120B_ID: &str = "gpt-oss-120b";
-    pub const GPT_OSS_120B_NAME: &str = "GPT OSS 120B";
-
     /// zAI GLM 4.7 - GLM reasoning model via zAI provider (preview)
     pub const ZAI_GLM_4_7_ID: &str = "zai-glm-4.7";
     pub const ZAI_GLM_4_7_NAME: &str = "zAI GLM 4.7";
@@ -137,12 +121,23 @@ pub mod glm {
     pub const ZAI_GLM_4_6_NAME: &str = "zAI GLM 4.6";
 
     // Shorthand aliases
-    pub const LLAMA_3_1_8B: &str = LLAMA_3_1_8B_ID;
-    pub const LLAMA_3_3_70B: &str = LLAMA_3_3_70B_ID;
-    pub const QWEN_3_235B: &str = QWEN_3_235B_ID;
-    pub const GPT_OSS_120B: &str = GPT_OSS_120B_ID;
     pub const ZAI_GLM_4_7: &str = ZAI_GLM_4_7_ID;
     pub const ZAI_GLM_4_6: &str = ZAI_GLM_4_6_ID;
+}
+
+/// Cerebras-hosted model constants
+pub mod cerebras {
+    /// GPT OSS 120B via Cerebras
+    pub const GPT_OSS_120B_ID: &str = "gpt-oss-120b";
+    pub const GPT_OSS_120B_NAME: &str = "GPT OSS 120B";
+
+    /// Qwen 3.8 27B via Cerebras
+    pub const QWEN_3_8_27B_ID: &str = "qwen-3.8-27b";
+    pub const QWEN_3_8_27B_NAME: &str = "Qwen 3.8 27B";
+
+    // Shorthand aliases
+    pub const GPT_OSS_120B: &str = GPT_OSS_120B_ID;
+    pub const QWEN_3_8_27B: &str = QWEN_3_8_27B_ID;
 }
 
 /// Voyage AI embedding model constants
@@ -263,6 +258,16 @@ pub mod groq {
     // Shorthand aliases
     pub const GPT_OSS_120B: &str = GPT_OSS_120B_ID;
     pub const GPT_OSS_20B: &str = GPT_OSS_20B_ID;
+}
+
+/// MixLayer-hosted model constants
+pub mod mixlayer {
+    /// Qwen 3.5 4B — free tier via MixLayer
+    pub const QWEN_3_5_4B_FREE_ID: &str = "qwen/qwen3.5-4b-free";
+    pub const QWEN_3_5_4B_FREE_NAME: &str = "Qwen 3.5 4B";
+
+    /// Shorthand alias for the model ID.
+    pub const QWEN_3_5_4B_FREE: &str = QWEN_3_5_4B_FREE_ID;
 }
 
 /// llama.cpp local model constants (GGUF models)

@@ -1,4 +1,4 @@
-use nocodo_llm_sdk::CerebrasGlmClient;
+use nocodo_llm_sdk::cerebras::{CerebrasClient, GPT_OSS_120B};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -7,19 +7,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("CEREBRAS_API_KEY environment variable must be set");
 
     // Create client
-    let client = CerebrasGlmClient::new(api_key)?;
+    let client = CerebrasClient::new(api_key)?;
 
     // Build and send request
     let response = client
         .message_builder()
-        .model("zai-glm-4.6")
+        .model(GPT_OSS_120B)
         .max_tokens(1024)
-        .user_message("Hello, GLM! Can you tell me about yourself?")
+        .user_message("Hello! Can you tell me about yourself?")
         .send()
         .await?;
 
     // Print response
-    println!("GLM: {}", response.choices[0].message.get_text());
+    println!("Cerebras: {}", response.choices[0].message.get_text());
     if let Some(usage) = &response.usage {
         println!(
             "Usage: {} input tokens, {} output tokens (total: {})",

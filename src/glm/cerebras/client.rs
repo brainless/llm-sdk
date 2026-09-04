@@ -6,7 +6,9 @@ use crate::{
     glm::types::{GlmChatCompletionRequest, GlmChatCompletionResponse, GlmErrorResponse},
 };
 
-/// Cerebras provider for GLM
+/// Cerebras Chat Completions client.
+///
+/// New code may import this as [`crate::cerebras::CerebrasClient`].
 pub struct CerebrasGlmClient {
     api_key: String,
     base_url: String,
@@ -14,7 +16,7 @@ pub struct CerebrasGlmClient {
 }
 
 impl CerebrasGlmClient {
-    /// Create a new GLM client with the given API key
+    /// Create a new Cerebras client with the given API key
     pub fn new(api_key: impl Into<String>) -> Result<Self, LlmError> {
         let api_key = api_key.into();
         if api_key.is_empty() {
@@ -39,7 +41,7 @@ impl CerebrasGlmClient {
         self
     }
 
-    /// Create a chat completion using the GLM Chat Completions API
+    /// Create a chat completion using the Cerebras Chat Completions API
     pub async fn create_chat_completion(
         &self,
         request: GlmChatCompletionRequest,
@@ -287,6 +289,6 @@ impl crate::client::LlmClient for CerebrasGlmClient {
     }
 
     fn model_name(&self) -> &str {
-        crate::models::glm::LLAMA_3_3_70B_ID // Default model
+        crate::models::cerebras::GPT_OSS_120B_ID
     }
 }

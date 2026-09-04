@@ -1,6 +1,6 @@
 use nocodo_llm_sdk::{
+    cerebras::CerebrasClient,
     claude::ClaudeClient,
-    glm::cerebras::CerebrasGlmClient,
     glm::zen::ZenGlmClient,
     grok::xai::XaiGrokClient,
     grok::zen::ZenGrokClient,
@@ -61,7 +61,7 @@ const TEST_CONFIGS: &[TestConfig] = &[
     ),
     TestConfig::new("xai-grok", "grok-code-fast-1", Some("XAI_API_KEY")),
     TestConfig::new("zen-grok", "grok-code", None),
-    TestConfig::new("cerebras-glm", "zai-glm-4.6", Some("CEREBRAS_API_KEY")),
+    TestConfig::new("cerebras", "gpt-oss-120b", Some("CEREBRAS_API_KEY")),
     TestConfig::new("zen-glm", "big-pickle", None),
 ];
 
@@ -178,11 +178,10 @@ async fn test_multi_turn_tool_use(config: &TestConfig) -> Result<(), Box<dyn std
             let client = ZenGrokClient::new()?;
             test_zen_grok_multi_turn(&client, config, &list_files_tool, &read_file_tool).await?;
         }
-        "cerebras-glm" => {
+        "cerebras" => {
             let api_key = std::env::var("CEREBRAS_API_KEY")?;
-            let client = CerebrasGlmClient::new(api_key)?;
-            test_cerebras_glm_multi_turn(&client, config, &list_files_tool, &read_file_tool)
-                .await?;
+            let client = CerebrasClient::new(api_key)?;
+            test_cerebras_multi_turn(&client, config, &list_files_tool, &read_file_tool).await?;
         }
         "zen-glm" => {
             let client = ZenGlmClient::new()?;
@@ -480,8 +479,8 @@ async fn test_xai_grok_multi_turn(
     Ok(())
 }
 
-async fn test_cerebras_glm_multi_turn(
-    client: &CerebrasGlmClient,
+async fn test_cerebras_multi_turn(
+    client: &CerebrasClient,
     config: &TestConfig,
     list_files_tool: &Tool,
     read_file_tool: &Tool,
@@ -844,15 +843,15 @@ async fn test_zen_grok_multi_turn_tool_use() {
 
 #[tokio::test]
 #[ignore]
-async fn test_cerebras_glm_multi_turn_tool_use() {
-    let config = TestConfig::new("cerebras-glm", "zai-glm-4.6", Some("CEREBRAS_API_KEY"));
+async fn test_cerebras_multi_turn_tool_use() {
+    let config = TestConfig::new("cerebras", "gpt-oss-120b", Some("CEREBRAS_API_KEY"));
     if !config.is_available() {
         println!("⏭️  Skipping - CEREBRAS_API_KEY not set");
         return;
     }
     test_multi_turn_tool_use(&config)
         .await
-        .expect("Cerebras GLM multi-turn tool use test failed");
+        .expect("Cerebras multi-turn tool use test failed");
 }
 
 #[tokio::test]

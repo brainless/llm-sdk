@@ -1,6 +1,6 @@
+use nocodo_llm_sdk::cerebras::CerebrasClient;
 use nocodo_llm_sdk::claude::ClaudeClient;
 use nocodo_llm_sdk::client::LlmClient;
-use nocodo_llm_sdk::glm::cerebras::CerebrasGlmClient;
 use nocodo_llm_sdk::glm::zen::ZenGlmClient;
 use nocodo_llm_sdk::grok::xai::XaiGrokClient;
 use nocodo_llm_sdk::grok::zen::ZenGrokClient;
@@ -13,7 +13,7 @@ fn test_all_clients_implement_trait() {
     assert_implements_trait::<OpenAIClient>();
     assert_implements_trait::<ClaudeClient>();
     assert_implements_trait::<XaiGrokClient>();
-    assert_implements_trait::<CerebrasGlmClient>();
+    assert_implements_trait::<CerebrasClient>();
     assert_implements_trait::<ZenGlmClient>();
     assert_implements_trait::<ZenGrokClient>();
 }

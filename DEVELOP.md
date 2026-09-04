@@ -2,7 +2,7 @@
 
 ## Overview
 
-A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, Ollama, llama.cpp, OpenAI, and Voyage AI.
+A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, MixLayer, Ollama, llama.cpp, OpenAI, and Voyage AI.
 
 **Crate**: `llm-sdk` v0.1.12  
 **Edition**: 2021
@@ -38,12 +38,14 @@ src/
 ├── grok/               # xAI Grok (OpenAI-compatible)
 │   ├── xai/            # Paid tier
 │   └── zen/            # Free tier (deprecated, use src/zen/)
-├── glm/                # Cerebras GLM
+├── cerebras/           # Cerebras provider API and model exports
+├── glm/                # GLM integrations (zAI and Zen)
 │   ├── cerebras/       # Paid tier
 │   └── zai/            # zAI provider
 ├── zen/                # OpenCode Zen (multi-lab free models)
 ├── groq/               # Groq (Chat Completions API)
 ├── openrouter/         # OpenRouter (multi-model proxy, free model discovery)
+├── mixlayer/           # MixLayer (OpenAI-compatible Chat Completions)
 ├── ollama/             # Local models via /api/chat
 ├── llama_cpp/          # Local models via OpenAI API
 ├── openai/             # GPT-5 via Responses API
@@ -84,6 +86,7 @@ cargo run --bin llm-test-runner --features test-runner -- config.toml
 anthropic_api_key = "sk-..."
 xai_api_key = "xai-..."
 openai_api_key = "sk-..."
+mixlayer_api_key = "..."
 gemini_api_key = "..."
 cerebras_api_key = "..."
 ```

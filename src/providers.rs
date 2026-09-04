@@ -34,3 +34,6 @@ pub const GROQ: &str = "groq";
 
 /// OpenRouter provider (multi-model proxy)
 pub const OPENROUTER: &str = "openrouter";
+
+/// MixLayer hosted-model provider
+pub const MIXLAYER: &str = "mixlayer";

@@ -1,4 +1,4 @@
-use nocodo_llm_sdk::glm::{cerebras::CerebrasGlmClient, types::GlmChatCompletionRequest};
+use nocodo_llm_sdk::cerebras::{CerebrasChatCompletionRequest, CerebrasClient};
 
 mod json_mode_helper;
 use json_mode_helper::{expected_values, json_mode_prompt, validate_person_info_json};
@@ -7,10 +7,10 @@ use json_mode_helper::{expected_values, json_mode_prompt, validate_person_info_j
 #[ignore] // Requires CEREBRAS_API_KEY environment variable
 async fn test_glm_real_api_call() {
     let api_key = std::env::var("CEREBRAS_API_KEY").expect("CEREBRAS_API_KEY not set");
-    let client = CerebrasGlmClient::new(api_key).unwrap();
+    let client = CerebrasClient::new(api_key).unwrap();
 
-    let request = GlmChatCompletionRequest {
-        model: "zai-glm-4.6".to_string(),
+    let request = CerebrasChatCompletionRequest {
+        model: "gpt-oss-120b".to_string(),
         messages: vec![nocodo_llm_sdk::glm::types::GlmMessage::user(
             "Say 'Hello, World!' and nothing else.",
         )],
@@ -47,10 +47,10 @@ async fn test_glm_real_api_call() {
 #[tokio::test]
 #[ignore] // Requires CEREBRAS_API_KEY environment variable
 async fn test_glm_invalid_api_key() {
-    let client = CerebrasGlmClient::new("invalid-key").unwrap();
+    let client = CerebrasClient::new("invalid-key").unwrap();
 
-    let request = GlmChatCompletionRequest {
-        model: "zai-glm-4.6".to_string(),
+    let request = CerebrasChatCompletionRequest {
+        model: "gpt-oss-120b".to_string(),
         messages: vec![nocodo_llm_sdk::glm::types::GlmMessage::user("Hello")],
         max_completion_tokens: Some(10),
         temperature: None,
@@ -77,7 +77,7 @@ async fn test_glm_invalid_api_key() {
 async fn test_glm_json_mode() {
     let api_key = std::env::var("CEREBRAS_API_KEY").expect("CEREBRAS_API_KEY not set");
 
-    let client = nocodo_llm_sdk::glm::cerebras::CerebrasGlmClient::new(api_key).unwrap();
+    let client = CerebrasClient::new(api_key).unwrap();
     let response = client
         .message_builder()
         .model("llama-3.3-70b")

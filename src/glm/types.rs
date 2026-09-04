@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// GLM chat completion request (Cerebras/OpenAI-compatible)
+/// GLM chat completion request (OpenAI-compatible)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlmChatCompletionRequest {
     /// The model to use for generation
@@ -72,7 +72,7 @@ pub enum GlmRole {
     Assistant,
 }
 
-/// GLM chat completion response (Cerebras/OpenAI-compatible)
+/// GLM chat completion response (OpenAI-compatible)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlmChatCompletionResponse {
     /// Unique identifier for the response

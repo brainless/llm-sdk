@@ -1,6 +1,6 @@
 use nocodo_llm_sdk::{
+    cerebras::CerebrasClient,
     claude::ClaudeClient,
-    glm::cerebras::CerebrasGlmClient,
     glm::zen::ZenGlmClient,
     grok::xai::XaiGrokClient,
     grok::zen::ZenGrokClient,
@@ -69,7 +69,7 @@ const TEST_CONFIGS: &[TestConfig] = &[
     ),
     TestConfig::new("xai-grok", "grok-code-fast-1", Some("XAI_API_KEY")),
     TestConfig::new("zen-grok", "grok-code", None),
-    TestConfig::new("cerebras-glm", "zai-glm-4.6", Some("CEREBRAS_API_KEY")),
+    TestConfig::new("cerebras", "gpt-oss-120b", Some("CEREBRAS_API_KEY")),
     TestConfig::new("zen-glm", "big-pickle", None),
 ];
 
@@ -361,9 +361,9 @@ async fn test_tool_calling(config: &TestConfig) -> Result<(), Box<dyn std::error
                 assert!(!response.choices[0].message.content.is_empty());
             }
         }
-        "cerebras-glm" => {
+        "cerebras" => {
             let api_key = std::env::var("CEREBRAS_API_KEY")?;
-            let client = CerebrasGlmClient::new(api_key)?;
+            let client = CerebrasClient::new(api_key)?;
 
             let response = client
                 .message_builder()
@@ -529,15 +529,15 @@ async fn test_zen_grok_tool_calling() {
 
 #[tokio::test]
 #[ignore]
-async fn test_cerebras_glm_tool_calling() {
-    let config = TestConfig::new("cerebras-glm", "zai-glm-4.6", Some("CEREBRAS_API_KEY"));
+async fn test_cerebras_tool_calling() {
+    let config = TestConfig::new("cerebras", "gpt-oss-120b", Some("CEREBRAS_API_KEY"));
     if !config.is_available() {
         println!("⏭️  Skipping - CEREBRAS_API_KEY not set");
         return;
     }
     test_tool_calling(&config)
         .await
-        .expect("Cerebras GLM tool calling test failed");
+        .expect("Cerebras tool calling test failed");
 }
 
 #[tokio::test]

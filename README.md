@@ -12,9 +12,11 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **Claude support**: Full Messages API implementation
 - **Gemini support**: Google Gemini 3 Pro and Flash with reasoning capabilities
 - **Grok support**: xAI and Zen (free) Grok integration with OpenAI-compatible API
-- **GLM support**: Cerebras GLM models with OpenAI-compatible API
+- **Cerebras support**: GPT OSS and Qwen models through an OpenAI-compatible API
+- **GLM support**: GLM models through zAI and Zen
 - **Groq support**: Groq Chat Completions API with tool use
 - **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
+- **MixLayer support**: OpenAI-compatible Chat Completions with reasoning, tools, structured output, and hosted web search
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
@@ -62,7 +64,7 @@ Access the same models through different providers for flexibility in cost, perf
 | Model | Zen (Free) | xAI (Paid) | Cerebras (Paid) |
 |-------|------------|------------|------------------|
 | **Grok** | `grok-code` | `grok-code-fast-1` | - |
-| **GLM 4.6** | `big-pickle` | - | `zai-glm-4.6` |
+| **GLM 4.6** | `big-pickle` | - | - |
 
 ## Installation
 
@@ -174,27 +176,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### GLM (Cerebras)
+### Cerebras
 
 ```rust
-use nocodo_llm_sdk::glm::GlmClient;
+use nocodo_llm_sdk::cerebras::{CerebrasClient, GPT_OSS_120B};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create client with your Cerebras API key
-    let client = GlmClient::new("your-cerebras-api-key")?;
+    let client = CerebrasClient::new("your-cerebras-api-key")?;
 
     // Build and send a message
     let response = client
         .message_builder()
-        .model("zai-glm-4.6")
+        .model(GPT_OSS_120B)
         .max_tokens(1024)
         .user_message("Explain quantum computing in simple terms.")
         .send()
         .await?;
 
-    // GLM models may return both content and reasoning
-    println!("GLM: {}", response.choices[0].message.get_text());
+    println!("Cerebras: {}", response.choices[0].message.get_text());
     println!(
         "Usage: {} input tokens, {} output tokens",
         response.usage.prompt_tokens, response.usage.completion_tokens
@@ -256,6 +256,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+### MixLayer
+
+MixLayer exposes hosted models through an OpenAI-compatible Chat Completions endpoint. The
+client defaults to the free `qwen/qwen3.5-4b-free` model.
+
+```rust
+use nocodo_llm_sdk::mixlayer::{MixlayerClient, QWEN_3_5_4B_FREE};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = MixlayerClient::new("your-mixlayer-api-key")?;
+
+    let response = client
+        .message_builder()
+        .model(QWEN_3_5_4B_FREE)
+        .system_message("You are a helpful assistant.")
+        .user_message("Explain ownership in Rust briefly.")
+        .max_completion_tokens(256)
+        .send()
+        .await?;
+
+    println!("{}", response.choices[0].message.content.as_deref().unwrap_or_default());
+    Ok(())
+}
+```
+
+The provider-specific builder also supports `reasoning_effort`, `thinking`, sampling penalties,
+strict JSON-schema output, tool calling, metadata/storage controls, and `web_search_options`.
 
 ### llama.cpp (Local)
 
@@ -320,20 +349,16 @@ let response = client
 println!("Response: {}", response.choices[0].message.content);
 ```
 
-### GLM 4.6 Models
-
-Access GLM 4.6 via different providers:
-
-#### Cerebras (Paid)
+### Cerebras Models
 ```rust
-use nocodo_llm_sdk::glm::cerebras::CerebrasGlmClient;
+use nocodo_llm_sdk::cerebras::{CerebrasClient, QWEN_3_8_27B};
 
-let client = CerebrasGlmClient::new("your-cerebras-api-key")?;
+let client = CerebrasClient::new("your-cerebras-api-key")?;
 let response = client
     .message_builder()
-    .model("zai-glm-4.6")
+    .model(QWEN_3_8_27B)
     .max_tokens(1024)
-    .user_message("Hello, GLM!")
+    .user_message("Hello, Qwen!")
     .send()
     .await?;
 
@@ -345,7 +370,7 @@ println!("Response: {}", response.choices[0].message.get_text());
 | Model | Zen (OpenCode) | Native Provider |
 |-------|----------------|-----------------|
 | **Grok** | `grok-code` (free) | `grok-code-fast-1` (xAI, paid) |
-| **GLM 4.6** | `big-pickle` (free, limited time) | `zai-glm-4.6` (Cerebras, paid) |
+| **GLM 4.6** | `big-pickle` (free, limited time) | zAI |
 
 ### OpenAI (GPT-5)
 
@@ -847,8 +872,9 @@ This SDK is in active development. v0.1 provides Claude and Grok support with a 
   - Features: Thinking level controls, 1M context, tool calling
 - **Grok** (xAI): OpenAI-compatible API
   - Models: grok-code-fast-1, grok-beta, grok-vision-beta
-- **GLM** (Cerebras): OpenAI-compatible API
-  - Models: zai-glm-4.6, llama-3.3-70b
+- **Cerebras**: OpenAI-compatible API
+  - Models: gpt-oss-120b, qwen-3.8-27b
+- **GLM**: zAI and Zen APIs
 - **Groq**: OpenAI-compatible Chat Completions API with tool use
 - **OpenRouter**: Multi-model proxy, OpenAI-compatible Chat Completions API
   - No fixed model list — call `list_free_programming_models()` to discover free models at runtime

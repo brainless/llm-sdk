@@ -47,19 +47,19 @@
 //! }
 //! ```
 //!
-//! ## GLM Example
+//! ## Cerebras Example
 //!
 //! ```rust,no_run
-//! use nocodo_llm_sdk::glm::GlmClient;
+//! use nocodo_llm_sdk::cerebras::{CerebrasClient, GPT_OSS_120B};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let client = GlmClient::new("your-cerebras-api-key")?;
+//!     let client = CerebrasClient::new("your-cerebras-api-key")?;
 //!     let response = client
 //!         .message_builder()
-//!         .model("zai-glm-4.6")
+//!         .model(GPT_OSS_120B)
 //!         .max_tokens(1024)
-//!     .user_message("Hello, GLM!")
+//!     .user_message("Hello from Cerebras!")
 //!     .send()
 //!     .await?;
 //!
@@ -124,6 +124,7 @@
 //! }
 //! ```
 
+pub mod cerebras;
 pub mod claude;
 pub mod client;
 pub mod error;
@@ -132,6 +133,7 @@ pub mod glm;
 pub mod grok;
 pub mod groq;
 pub mod llama_cpp;
+pub mod mixlayer;
 pub mod model_metadata;
 pub mod models;
 pub mod ollama;
@@ -144,12 +146,15 @@ pub mod voyage;
 pub mod zen;
 
 // Provider-specific exports
+pub use cerebras::CerebrasClient;
 pub use gemini::GeminiClient;
+#[deprecated(since = "0.2.0", note = "Use cerebras::CerebrasClient")]
 pub use glm::cerebras::CerebrasGlmClient;
 pub use grok::xai::XaiGrokClient;
 pub use grok::zen::ZenGrokClient;
 pub use groq::GroqClient;
 pub use llama_cpp::LlamaCppClient;
+pub use mixlayer::MixlayerClient;
 pub use ollama::OllamaClient;
 pub use zen::OpenCodeZenClient;
 
@@ -163,7 +168,7 @@ pub use models::*;
 #[deprecated(since = "0.2.0", note = "Use XaiGrokClient explicitly")]
 pub use grok::xai::XaiGrokClient as GrokClient;
 
-#[deprecated(since = "0.2.0", note = "Use CerebrasGlmClient explicitly")]
+#[deprecated(since = "0.2.0", note = "Use cerebras::CerebrasClient")]
 pub use glm::cerebras::CerebrasGlmClient as GlmClient;
 
 #[deprecated(since = "0.2.0", note = "Use OpenCodeZenClient from the zen module")]
@@ -171,14 +176,12 @@ pub use zen::OpenCodeZenClient as ZenGlmClient;
 
 #[cfg(test)]
 mod tests {
+    use crate::cerebras::CerebrasClient;
     use crate::claude::{
         client::ClaudeClient,
         types::{ClaudeContentBlock, ClaudeMessage, ClaudeRole},
     };
-    use crate::glm::{
-        cerebras::CerebrasGlmClient,
-        types::{GlmMessage, GlmRole},
-    };
+    use crate::glm::types::{GlmMessage, GlmRole};
     use crate::grok::{
         types::{GrokMessage, GrokRole},
         xai::XaiGrokClient,
@@ -258,23 +261,23 @@ mod tests {
     }
 
     #[test]
-    fn test_cerebras_glm_client_creation() {
-        let client = CerebrasGlmClient::new("test-key");
+    fn test_cerebras_client_creation() {
+        let client = CerebrasClient::new("test-key");
         assert!(client.is_ok());
     }
 
     #[test]
-    fn test_cerebras_glm_client_creation_empty_key() {
-        let client = CerebrasGlmClient::new("");
+    fn test_cerebras_client_creation_empty_key() {
+        let client = CerebrasClient::new("");
         assert!(client.is_err());
     }
 
     #[test]
-    fn test_cerebras_glm_message_builder() {
-        let client = CerebrasGlmClient::new("test-key").unwrap();
+    fn test_cerebras_message_builder() {
+        let client = CerebrasClient::new("test-key").unwrap();
         let _builder = client
             .message_builder()
-            .model("zai-glm-4.6")
+            .model(crate::models::cerebras::GPT_OSS_120B_ID)
             .max_tokens(100)
             .user_message("Hello");
 

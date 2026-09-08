@@ -348,6 +348,7 @@ impl crate::client::LlmClient for OllamaClient {
         let usage = crate::types::Usage {
             input_tokens: ollama_response.prompt_eval_count.unwrap_or(0),
             output_tokens: ollama_response.eval_count.unwrap_or(0),
+            reasoning_tokens: None,
         };
 
         let tool_calls = ollama_response.message.tool_calls.as_ref().map(|calls| {

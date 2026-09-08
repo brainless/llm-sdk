@@ -264,6 +264,7 @@ impl crate::client::LlmClient for XaiGrokClient {
                     .as_ref()
                     .and_then(|u| Some(u.completion_tokens))
                     .unwrap_or(0),
+                reasoning_tokens: None,
             },
             stop_reason: choice.finish_reason.clone(),
             tool_calls: None, // TODO: Extract tool calls from Grok response

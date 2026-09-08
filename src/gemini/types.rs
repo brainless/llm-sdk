@@ -125,6 +125,9 @@ pub struct GeminiUsageMetadata {
     pub candidates_token_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_token_count: Option<u32>,
+    /// Number of tokens used by the model's internal thinking process.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thoughts_token_count: Option<u32>,
 }
 
 /// Main response structure
@@ -214,5 +217,20 @@ impl Default for GeminiPart {
             function_response: None,
             thought_signature: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GeminiUsageMetadata;
+
+    #[test]
+    fn deserializes_thought_token_count() {
+        let usage: GeminiUsageMetadata = serde_json::from_str(
+            r#"{"promptTokenCount":10,"candidatesTokenCount":5,"thoughtsTokenCount":7,"totalTokenCount":22}"#,
+        )
+        .unwrap();
+
+        assert_eq!(usage.thoughts_token_count, Some(7));
     }
 }

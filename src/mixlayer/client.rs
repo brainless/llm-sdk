@@ -249,6 +249,7 @@ impl crate::client::LlmClient for MixlayerClient {
             usage: crate::types::Usage {
                 input_tokens: response.usage.prompt_tokens,
                 output_tokens: response.usage.completion_tokens,
+                reasoning_tokens: None,
             },
             stop_reason: choice.finish_reason.clone(),
             tool_calls,

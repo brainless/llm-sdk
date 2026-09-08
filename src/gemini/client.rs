@@ -359,6 +359,10 @@ impl crate::client::LlmClient for GeminiClient {
                     .as_ref()
                     .and_then(|u| u.candidates_token_count)
                     .unwrap_or(0),
+                reasoning_tokens: gemini_response
+                    .usage_metadata
+                    .as_ref()
+                    .and_then(|u| u.thoughts_token_count),
             },
             stop_reason: Some(candidate.finish_reason),
             tool_calls: if tool_calls.is_empty() {

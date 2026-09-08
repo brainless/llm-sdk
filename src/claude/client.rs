@@ -261,6 +261,7 @@ impl crate::client::LlmClient for ClaudeClient {
             usage: crate::types::Usage {
                 input_tokens: claude_response.usage.input_tokens,
                 output_tokens: claude_response.usage.output_tokens,
+                reasoning_tokens: None,
             },
             stop_reason: claude_response.stop_reason,
             tool_calls: if tool_calls.is_empty() {

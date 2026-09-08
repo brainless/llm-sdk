@@ -238,6 +238,7 @@ impl crate::client::LlmClient for LlamaCppClient {
             usage: crate::types::Usage {
                 input_tokens: usage.prompt_tokens,
                 output_tokens: usage.completion_tokens,
+                reasoning_tokens: None,
             },
             stop_reason: choice.finish_reason.clone(),
             tool_calls,

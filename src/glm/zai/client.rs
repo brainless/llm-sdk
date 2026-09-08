@@ -712,6 +712,7 @@ impl crate::client::LlmClient for ZaiGlmClient {
                     .as_ref()
                     .map(|u| u.completion_tokens)
                     .unwrap_or(0),
+                reasoning_tokens: None,
             },
             stop_reason: choice.finish_reason.clone(),
             tool_calls,

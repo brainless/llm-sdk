@@ -112,6 +112,9 @@ pub struct Usage {
     pub input_tokens: u32,
     /// Number of tokens in the output completion
     pub output_tokens: u32,
+    /// Number of tokens used for internal reasoning, when reported by the provider
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_tokens: Option<u32>,
 }
 
 /// Response format type

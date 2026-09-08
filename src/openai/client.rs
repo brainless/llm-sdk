@@ -321,6 +321,11 @@ impl crate::client::LlmClient for OpenAIClient {
                     .usage
                     .output_tokens
                     .unwrap_or(openai_response.usage.completion_tokens.unwrap_or(0)),
+                reasoning_tokens: openai_response
+                    .usage
+                    .completion_tokens_details
+                    .as_ref()
+                    .and_then(|details| details.reasoning_tokens),
             },
             stop_reason,
             tool_calls,
@@ -335,6 +340,47 @@ impl crate::client::LlmClient for OpenAIClient {
 
     fn model_name(&self) -> &str {
         crate::models::openai::GPT_4O_ID // Default to GPT-4o
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::LlmClient;
+
+    #[tokio::test]
+    async fn propagates_reasoning_tokens_to_common_usage() {
+        let mut server = mockito::Server::new_async().await;
+        let mock = server
+            .mock("POST", "/v1/responses")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"{"id":"resp_1","object":"response","created_at":1,"status":"completed","model":"gpt-5","output":[],"usage":{"input_tokens":10,"output_tokens":25,"total_tokens":35,"completion_tokens_details":{"reasoning_tokens":17}}}"#,
+            )
+            .create_async()
+            .await;
+
+        let response = OpenAIClient::new("test-key")
+            .unwrap()
+            .with_base_url(server.url())
+            .complete(crate::types::CompletionRequest {
+                messages: vec![crate::types::Message::user("hello")],
+                max_tokens: 32,
+                model: "gpt-5".into(),
+                system: None,
+                temperature: None,
+                top_p: None,
+                stop_sequences: None,
+                tools: None,
+                tool_choice: None,
+                response_format: None,
+            })
+            .await
+            .unwrap();
+
+        mock.assert_async().await;
+        assert_eq!(response.usage.reasoning_tokens, Some(17));
     }
 }
 

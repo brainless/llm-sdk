@@ -330,6 +330,37 @@ pub fn get_all_models() -> Vec<ModelMetadata> {
             default_max_tokens: Some(4096),
             default_thinking_level: None,
         },
+        // Xiaomi MiMo models
+        ModelMetadata {
+            provider: providers::XIAOMI,
+            model_id: models::xiaomi::MIMO_V2_5_ID,
+            name: models::xiaomi::MIMO_V2_5_NAME,
+            context_length: 128_000,
+            supports_streaming: true,
+            supports_tool_calling: true,
+            supports_vision: false,
+            supports_reasoning: true,
+            input_cost_per_token: None, // Pricing TBD
+            output_cost_per_token: None,
+            default_temperature: Some(1.0),
+            default_max_tokens: Some(8192),
+            default_thinking_level: None,
+        },
+        ModelMetadata {
+            provider: providers::XIAOMI,
+            model_id: models::xiaomi::MIMO_V2_5_PRO_ID,
+            name: models::xiaomi::MIMO_V2_5_PRO_NAME,
+            context_length: 128_000,
+            supports_streaming: true,
+            supports_tool_calling: true,
+            supports_vision: false,
+            supports_reasoning: true,
+            input_cost_per_token: None, // Pricing TBD
+            output_cost_per_token: None,
+            default_temperature: Some(1.0),
+            default_max_tokens: Some(8192),
+            default_thinking_level: None,
+        },
         // Google Gemini models
         ModelMetadata {
             provider: providers::GOOGLE,

@@ -287,6 +287,21 @@ pub mod llama_cpp {
     pub const LFM_2_5_2_6B: &str = LFM_2_5_2_6B_ID;
 }
 
+/// Xiaomi MiMo model constants
+pub mod xiaomi {
+    /// MiMo V2.5 — Xiaomi's base reasoning model
+    pub const MIMO_V2_5_ID: &str = "mimo-v2.5";
+    pub const MIMO_V2_5_NAME: &str = "MiMo V2.5";
+
+    /// MiMo V2.5 Pro — Xiaomi's advanced reasoning model
+    pub const MIMO_V2_5_PRO_ID: &str = "mimo-v2.5-pro";
+    pub const MIMO_V2_5_PRO_NAME: &str = "MiMo V2.5 Pro";
+
+    // Shorthand aliases
+    pub const MIMO_V2_5: &str = MIMO_V2_5_ID;
+    pub const MIMO_V2_5_PRO: &str = MIMO_V2_5_PRO_ID;
+}
+
 /// OpenCode Zen free model constants
 pub mod zen {
     /// Big Pickle — stealth model, free on OpenCode for a limited time

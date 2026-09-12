@@ -143,6 +143,7 @@ pub mod providers;
 pub mod tools;
 pub mod types;
 pub mod voyage;
+pub mod xiaomi;
 pub mod zen;
 
 // Provider-specific exports
@@ -156,6 +157,7 @@ pub use groq::GroqClient;
 pub use llama_cpp::LlamaCppClient;
 pub use mixlayer::MixlayerClient;
 pub use ollama::OllamaClient;
+pub use xiaomi::XiaomiClient;
 pub use zen::OpenCodeZenClient;
 
 // Tool exports

@@ -37,3 +37,6 @@ pub const OPENROUTER: &str = "openrouter";
 
 /// MixLayer hosted-model provider
 pub const MIXLAYER: &str = "mixlayer";
+
+/// Xiaomi (MiMo) provider
+pub const XIAOMI: &str = "xiaomi";

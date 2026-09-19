@@ -2,10 +2,13 @@
 
 ## Overview
 
-A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, MixLayer, Ollama, llama.cpp, OpenAI, and Voyage AI.
+A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, MixLayer, Xiaomi MiMo, Ollama, llama.cpp, OpenAI, and Voyage AI.
 
-**Crate**: `llm-sdk` v0.1.12  
+**Crate**: `llm-sdk` v0.1.12
+
 **Edition**: 2021
+
+**Toolchain**: nightly (pinned by `rust-toolchain.toml`)
 
 ## Architecture
 
@@ -46,13 +49,14 @@ src/
 ├── groq/               # Groq (Chat Completions API)
 ├── openrouter/         # OpenRouter (multi-model proxy, free model discovery)
 ├── mixlayer/           # MixLayer (OpenAI-compatible Chat Completions)
+├── xiaomi/             # Xiaomi MiMo (OpenAI-compatible Chat Completions)
 ├── ollama/             # Local models via /api/chat
 ├── llama_cpp/          # Local models via OpenAI API
 ├── openai/             # GPT-5 via Responses API
 └── voyage/             # Text embeddings
 
 examples/               # 14 runnable examples
-tests/                  # 13 integration tests
+tests/                  # 14 integration-test targets and helpers
 bin/test_runner.rs      # Automated test runner with TOML config
 ```
 
@@ -62,12 +66,13 @@ bin/test_runner.rs      # Automated test runner with TOML config
 - **Tool Calling**: Type-safe with automatic JSON Schema via schemars
 - **Builder Pattern**: Ergonomic request construction
 - **Error Handling**: Structured errors (Auth, RateLimit, Network, etc.)
+- **Usage Reporting**: Common input/output counts plus optional provider-reported reasoning tokens
 
 ## Testing
 
 ### Unit Tests
 ```bash
-cargo test
+cargo test --lib
 ```
 
 ### Integration Tests (requires API keys)
@@ -75,10 +80,14 @@ cargo test
 # Manual
 ANTHROPIC_API_KEY=xxx cargo test --test claude_integration -- --ignored
 OPENROUTER_API_KEY=xxx cargo test --test openrouter_integration -- --ignored
+XIAOMI_API_KEY=xxx cargo test --test xiaomi_integration -- --ignored
 
-# Or use test runner with TOML config
+# Or run the targets registered in the test runner with a TOML config
 cargo run --bin llm-test-runner --features test-runner -- config.toml
 ```
+
+The test runner does not currently register the OpenRouter or Xiaomi targets; run those manually
+as shown above.
 
 ### Config Format (config.toml)
 ```toml
@@ -86,9 +95,9 @@ cargo run --bin llm-test-runner --features test-runner -- config.toml
 anthropic_api_key = "sk-..."
 xai_api_key = "xai-..."
 openai_api_key = "sk-..."
-mixlayer_api_key = "..."
 gemini_api_key = "..."
 cerebras_api_key = "..."
+zai_api_key = "..."
 ```
 
 ## Dependencies
@@ -119,7 +128,10 @@ cerebras_api_key = "..."
 
 3. Add provider constant to `src/providers.rs`
 
-4. Create integration test in `tests/new_provider_integration.rs`
+4. Add model constants to `src/models.rs` and capabilities to `src/model_metadata.rs`
+
+5. Create integration tests in `tests/new_provider_integration.rs`; mark tests that make live API
+   calls `#[ignore]` and document the required environment variable.
 
 ## Common Tasks
 
@@ -138,6 +150,12 @@ cargo check --all-features
 cargo test --no-run
 ```
 
+**Format and lint:**
+```bash
+cargo fmt --check
+cargo clippy --all-targets --all-features
+```
+
 ## Model Constants
 
 Located in `src/models.rs`:
@@ -146,10 +164,15 @@ Located in `src/models.rs`:
 - `GPT_5_MINI`, `GPT_5_NANO`
 - `VOYAGE_4_LITE`, `VOYAGE_4`
 - `ZAI_GLM_4_6`, etc.
+- `MIMO_V2_5`, `MIMO_V2_5_PRO`
 
 OpenRouter has no hardcoded model constants — its free-tier catalog changes frequently, so
 `OpenRouterClient::list_free_programming_models()` discovers current free models at runtime
 instead.
+
+The provider-neutral `Usage` type in `src/types.rs` exposes `reasoning_tokens: Option<u32>`.
+Gemini and OpenAI populate it when their APIs report reasoning-token usage; other providers return
+`None` until their response mapping supports an equivalent field.
 
 ## Error Codes
 

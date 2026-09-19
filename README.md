@@ -17,11 +17,13 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **Groq support**: Groq Chat Completions API with tool use
 - **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
 - **MixLayer support**: OpenAI-compatible Chat Completions with reasoning, tools, structured output, and hosted web search
+- **Xiaomi support**: MiMo V2.5 and MiMo V2.5 Pro through Xiaomi's OpenAI-compatible Chat Completions API
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
 - **OpenAI support**: GPT-5 models (GPT-5, GPT-5 mini, GPT-5 nano, GPT-5.1, GPT-5.1 Codex) via Responses API
 - **Voyage AI support**: Text embeddings with multiple specialized models
+- **Usage reporting**: Provider-neutral input, output, and optional reasoning-token counts
 - **Multi-provider**: Same models available from different providers
 - **Extensible**: Designed for easy addition of other LLM providers
 
@@ -47,6 +49,7 @@ impl LlmClient for GeminiClient { /* ... */ }
 impl LlmClient for GrokClient { /* ... */ }
 impl LlmClient for GlmClient { /* ... */ }
 impl LlmClient for OpenAIClient { /* ... */ }
+impl LlmClient for XiaomiClient { /* ... */ }
 ```
 
 ### Benefits
@@ -82,7 +85,7 @@ llm-sdk = "0.1"
 ### Claude (Anthropic)
 
 ```rust
-use nocodo_llm_sdk::claude::ClaudeClient;
+use llm_sdk::claude::ClaudeClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -106,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Gemini (Google)
 
 ```rust
-use nocodo_llm_sdk::gemini::GeminiClient;
+use llm_sdk::gemini::GeminiClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -151,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Grok (xAI)
 
 ```rust
-use nocodo_llm_sdk::grok::GrokClient;
+use llm_sdk::grok::GrokClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -179,7 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Cerebras
 
 ```rust
-use nocodo_llm_sdk::cerebras::{CerebrasClient, GPT_OSS_120B};
+use llm_sdk::cerebras::{CerebrasClient, GPT_OSS_120B};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -203,13 +206,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Xiaomi MiMo
+
+```rust
+use llm_sdk::models::xiaomi::MIMO_V2_5;
+use llm_sdk::xiaomi::XiaomiClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = XiaomiClient::new("your-xiaomi-api-key")?;
+
+    let response = client
+        .message_builder()
+        .model(MIMO_V2_5)
+        .system_message("You are a helpful assistant.")
+        .user_message("Explain Rust ownership briefly.")
+        .max_completion_tokens(256)
+        .send()
+        .await?;
+
+    println!(
+        "MiMo: {}",
+        response.choices[0].message.content.as_deref().unwrap_or_default()
+    );
+    Ok(())
+}
+```
+
+`XiaomiClient` defaults to `mimo-v2.5`. It also supports `mimo-v2.5-pro`, tool calling,
+tool results, sampling controls, stop sequences, JSON-object output, and strict JSON-schema output.
+
 ### OpenRouter
 
 OpenRouter proxies many models through an OpenAI-compatible Chat Completions API. Free models
 are not hardcoded — discover the current free programming models at runtime, then pick one.
 
 ```rust
-use nocodo_llm_sdk::openrouter::OpenRouterClient;
+use llm_sdk::openrouter::OpenRouterClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -238,7 +271,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Ollama (Local)
 
 ```rust
-use nocodo_llm_sdk::ollama::OllamaClient;
+use llm_sdk::ollama::OllamaClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -263,7 +296,7 @@ MixLayer exposes hosted models through an OpenAI-compatible Chat Completions end
 client defaults to the free `qwen/qwen3.5-4b-free` model.
 
 ```rust
-use nocodo_llm_sdk::mixlayer::{MixlayerClient, QWEN_3_5_4B_FREE};
+use llm_sdk::mixlayer::{MixlayerClient, QWEN_3_5_4B_FREE};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -289,7 +322,7 @@ strict JSON-schema output, tool calling, metadata/storage controls, and `web_sea
 ### llama.cpp (Local)
 
 ```rust
-use nocodo_llm_sdk::llama_cpp::LlamaCppClient;
+use llm_sdk::llama_cpp::LlamaCppClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -310,7 +343,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Multi-Provider Support
 
-nocodo-llm-sdk supports accessing the same models via different providers, giving you flexibility in cost, performance, and availability.
+`llm-sdk` supports accessing the same models via different providers, giving you flexibility in cost, performance, and availability.
 
 ### Grok Models
 
@@ -318,7 +351,7 @@ Access Grok via different providers:
 
 #### Zen (Free)
 ```rust
-use nocodo_llm_sdk::grok::zen::ZenGrokClient;
+use llm_sdk::grok::zen::ZenGrokClient;
 
 // No API key required for free model!
 let client = ZenGrokClient::new()?;
@@ -335,7 +368,7 @@ println!("Response: {}", response.choices[0].message.content);
 
 #### xAI (Paid)
 ```rust
-use nocodo_llm_sdk::grok::xai::XaiGrokClient;
+use llm_sdk::grok::xai::XaiGrokClient;
 
 let client = XaiGrokClient::new("your-xai-api-key")?;
 let response = client
@@ -351,7 +384,7 @@ println!("Response: {}", response.choices[0].message.content);
 
 ### Cerebras Models
 ```rust
-use nocodo_llm_sdk::cerebras::{CerebrasClient, QWEN_3_8_27B};
+use llm_sdk::cerebras::{CerebrasClient, QWEN_3_8_27B};
 
 let client = CerebrasClient::new("your-cerebras-api-key")?;
 let response = client
@@ -375,7 +408,7 @@ println!("Response: {}", response.choices[0].message.get_text());
 ### OpenAI (GPT-5)
 
 ```rust
-use nocodo_llm_sdk::openai::OpenAIClient;
+use llm_sdk::openai::OpenAIClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -420,8 +453,8 @@ Google's Gemini 3 models with reasoning capabilities and thinking level controls
 The most intelligent model for complex reasoning tasks.
 
 ```rust
-use nocodo_llm_sdk::gemini::GeminiClient;
-use nocodo_llm_sdk::models::gemini::GEMINI_3_PRO;
+use llm_sdk::gemini::GeminiClient;
+use llm_sdk::models::gemini::GEMINI_3_PRO;
 
 let client = GeminiClient::new("your-google-api-key")?;
 
@@ -451,7 +484,7 @@ for candidate in &response.candidates {
 Pro-level intelligence at Flash speed for faster responses.
 
 ```rust
-use nocodo_llm_sdk::models::gemini::GEMINI_3_FLASH;
+use llm_sdk::models::gemini::GEMINI_3_FLASH;
 
 let response = client
     .message_builder()
@@ -602,10 +635,10 @@ match client
     .await
 {
     Ok(response) => println!("Success: {}", response.content[0].text),
-    Err(nocodo_llm_sdk::error::LlmError::AuthenticationError { message }) => {
+    Err(llm_sdk::error::LlmError::Authentication { message }) => {
         eprintln!("Authentication failed: {}", message);
     }
-    Err(nocodo_llm_sdk::error::LlmError::RateLimitError { message, retry_after }) => {
+    Err(llm_sdk::error::LlmError::RateLimit { message, retry_after }) => {
         eprintln!("Rate limited: {} - retry after {:?}", message, retry_after);
     }
     Err(e) => eprintln!("Other error: {:?}", e),
@@ -619,7 +652,7 @@ Enable LLMs to call external functions with type-safe parameter extraction.
 ### Basic Example
 
 ```rust
-use nocodo_llm_sdk::{openai::OpenAIClient, tools::Tool};
+use llm_sdk::{openai::OpenAIClient, tools::Tool};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -742,7 +775,15 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `with_base_url(url: impl Into<String>) -> Self`: Set custom API base URL
 - `message_builder() -> LlamaCppMessageBuilder`: Start building a message request
 
-### MessageBuilder (Claude, Grok, GLM & OpenRouter)
+### XiaomiClient
+
+- `new(api_key: impl Into<String>) -> Result<Self>`: Create a client; defaults to `mimo-v2.5`
+- `with_model(model: impl Into<String>) -> Self`: Set the model used by the `LlmClient` trait's `complete()`
+- `with_base_url(url: impl Into<String>) -> Self`: Set a custom API base URL
+- `message_builder() -> XiaomiMessageBuilder`: Start building a chat completion
+- `create_chat_completion(request: XiaomiChatCompletionRequest)`: Send a provider-native request
+
+### MessageBuilder (Claude, Grok, GLM, OpenRouter & Xiaomi)
 
 - `model(model: impl Into<String>) -> Self`: Set the model
 - `max_tokens(tokens: u32) -> Self`: Set maximum tokens
@@ -759,6 +800,8 @@ Note: Claude also supports `system()` for system prompts, while Grok and OpenRou
 OpenRouter's builder also supports `tool_choice(choice: ToolChoice) -> Self`, `response_format(format: OpenRouterResponseFormat) -> Self`,
 `json_schema_response_format(name, schema: serde_json::Value) -> Self`, and `tool_result(result: ToolResult) -> Self` for feeding tool
 outputs back into the conversation.
+Xiaomi prefers `max_completion_tokens()` over its legacy `max_tokens()` field and supports
+`json_schema_response_format(schema)`, `tool_choice()`, and `tool_result()`.
 
 #### OpenRouter response formats
 
@@ -773,7 +816,7 @@ outputs back into the conversation.
 `json_schema` is always strict — OpenRouter only guarantees schema conformance for strict schemas.
 
 ```rust
-use nocodo_llm_sdk::openrouter::OpenRouterResponseFormat;
+use llm_sdk::openrouter::OpenRouterResponseFormat;
 
 let schema = serde_json::json!({
     "type": "object",
@@ -809,20 +852,22 @@ let response = client
 
 ## Error Types
 
-- `AuthenticationError`: Invalid API key
-- `RateLimitError`: Rate limit exceeded (includes retry_after info)
-- `InvalidRequestError`: Malformed request
-- `ApiError`: API error with status code
-- `NetworkError`: Network/connection issues
-- `ParseError`: JSON parsing errors
-- `InternalError`: Unexpected internal errors
+- `Authentication`: Invalid API key
+- `RateLimit`: Rate limit exceeded (includes `retry_after` information)
+- `InvalidRequest`: Malformed request
+- `Api` / `OpenRouterApi`: Provider API errors
+- `Network`: Network or connection failures
+- `Parse`: JSON parsing errors
+- `Internal`: Unexpected internal errors
+- `InvalidToolSchema`, `ToolArgumentParse`, `ToolExecutionFailed`: Tool-related failures
+- `NotSupported`: Unsupported provider capability
 
 ## Testing
 
 ### Unit Tests
 
 ```bash
-cargo test
+cargo test --lib
 ```
 
 ### Integration Tests
@@ -844,6 +889,9 @@ CEREBRAS_API_KEY=your-key-here cargo test --test glm_integration -- --ignored
 
 # OpenRouter integration tests
 OPENROUTER_API_KEY=your-key-here cargo test --test openrouter_integration -- --ignored
+
+# Xiaomi MiMo integration tests
+XIAOMI_API_KEY=your-key-here cargo test --test xiaomi_integration -- --ignored
 ```
 
 ## Examples
@@ -861,7 +909,8 @@ See the `examples/` directory for complete working examples:
 
 ## Development
 
-This SDK is in active development. v0.1 provides Claude and Grok support with a clean, standalone API.
+This SDK is in active development. The v0.1 API provides provider-specific builders alongside the
+shared `LlmClient` completion interface.
 
 ### Supported Providers
 
@@ -878,6 +927,11 @@ This SDK is in active development. v0.1 provides Claude and Grok support with a 
 - **Groq**: OpenAI-compatible Chat Completions API with tool use
 - **OpenRouter**: Multi-model proxy, OpenAI-compatible Chat Completions API
   - No fixed model list — call `list_free_programming_models()` to discover free models at runtime
+- **MixLayer**: OpenAI-compatible Chat Completions API
+  - Features: reasoning controls, tool calling, structured output, and hosted web search
+- **Xiaomi MiMo**: OpenAI-compatible Chat Completions API
+  - Models: mimo-v2.5, mimo-v2.5-pro
+  - Features: tool calling and structured output
 - **Ollama** (Local): `/api/chat` endpoint
   - Models: local models installed in Ollama
 - **llama.cpp** (Local): OpenAI-compatible API

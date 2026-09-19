@@ -159,21 +159,19 @@ impl crate::client::LlmClient for XiaomiClient {
                 .collect::<Result<Vec<_>, _>>()?
                 .join("");
             let provider_message = match message.role {
-                crate::types::Role::Assistant if message.tool_call_id.is_some() => {
-                    XiaomiMessage {
-                        role: XiaomiRole::Assistant,
-                        content: None,
-                        tool_calls: Some(vec![XiaomiToolCall {
-                            id: message.tool_call_id.unwrap(),
-                            tool_type: "function".into(),
-                            function: XiaomiFunctionCall {
-                                name: message.tool_name.unwrap_or_default(),
-                                arguments: content,
-                            },
-                        }]),
-                        tool_call_id: None,
-                    }
-                }
+                crate::types::Role::Assistant if message.tool_call_id.is_some() => XiaomiMessage {
+                    role: XiaomiRole::Assistant,
+                    content: None,
+                    tool_calls: Some(vec![XiaomiToolCall {
+                        id: message.tool_call_id.unwrap(),
+                        tool_type: "function".into(),
+                        function: XiaomiFunctionCall {
+                            name: message.tool_name.unwrap_or_default(),
+                            arguments: content,
+                        },
+                    }]),
+                    tool_call_id: None,
+                },
                 crate::types::Role::Tool => {
                     XiaomiMessage::tool_result(message.tool_call_id.unwrap_or_default(), content)
                 }

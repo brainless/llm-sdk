@@ -1,5 +1,5 @@
-use nocodo_llm_sdk::xiaomi::XiaomiClient;
 use nocodo_llm_sdk::models::xiaomi::{MIMO_V2_5, MIMO_V2_5_PRO};
+use nocodo_llm_sdk::xiaomi::XiaomiClient;
 
 // Integration tests require XIAOMI_API_KEY environment variable
 // Run with: XIAOMI_API_KEY=... cargo test --test xiaomi_integration -- --ignored

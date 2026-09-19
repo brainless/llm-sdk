@@ -204,7 +204,10 @@ mod tests {
     fn deserializes_response() {
         let raw = r#"{"id":"c1","object":"chat.completion","created":1,"model":"mimo-v2.5","choices":[{"index":0,"message":{"role":"assistant","content":"answer"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}"#;
         let response: XiaomiChatCompletionResponse = serde_json::from_str(raw).unwrap();
-        assert_eq!(response.choices[0].message.content.as_deref(), Some("answer"));
+        assert_eq!(
+            response.choices[0].message.content.as_deref(),
+            Some("answer")
+        );
         assert_eq!(response.usage.prompt_tokens, 4);
     }
 }

@@ -49,7 +49,7 @@ src/
 ├── groq/               # Groq (Chat Completions API)
 ├── openrouter/         # OpenRouter (multi-model proxy, free model discovery)
 ├── mixlayer/           # MixLayer (OpenAI-compatible Chat Completions)
-├── xiaomi/             # Xiaomi MiMo (OpenAI-compatible Chat Completions)
+├── xiaomi/             # Xiaomi MiMo chat and ASR (OpenAI-compatible Chat Completions)
 ├── ollama/             # Local models via /api/chat
 ├── llama_cpp/          # Local models via OpenAI API
 ├── openai/             # GPT-5 via Responses API
@@ -81,6 +81,10 @@ cargo test --lib
 ANTHROPIC_API_KEY=xxx cargo test --test claude_integration -- --ignored
 OPENROUTER_API_KEY=xxx cargo test --test openrouter_integration -- --ignored
 XIAOMI_API_KEY=xxx cargo test --test xiaomi_integration -- --ignored
+
+# ASR test input is raw Base64 for a WAV file (without a data-URL prefix)
+XIAOMI_API_KEY=xxx XIAOMI_ASR_AUDIO_BASE64=... \
+  cargo test --test xiaomi_integration test_xiaomi_mimo_v2_5_asr -- --ignored
 
 # Or run the targets registered in the test runner with a TOML config
 cargo run --bin llm-test-runner --features test-runner -- config.toml
@@ -164,7 +168,7 @@ Located in `src/models.rs`:
 - `GPT_5_MINI`, `GPT_5_NANO`
 - `VOYAGE_4_LITE`, `VOYAGE_4`
 - `ZAI_GLM_4_6`, etc.
-- `MIMO_V2_5`, `MIMO_V2_5_PRO`
+- `MIMO_V2_5`, `MIMO_V2_5_PRO`, `MIMO_V2_5_ASR`
 
 OpenRouter has no hardcoded model constants — its free-tier catalog changes frequently, so
 `OpenRouterClient::list_free_programming_models()` discovers current free models at runtime
@@ -173,6 +177,13 @@ instead.
 The provider-neutral `Usage` type in `src/types.rs` exposes `reasoning_tokens: Option<u32>`.
 Gemini and OpenAI populate it when their APIs report reasoning-token usage; other providers return
 `None` until their response mapping supports an equivalent field.
+
+Xiaomi speech recognition is provider-specific rather than part of `LlmClient::complete()`. The
+`XiaomiSpeechRecognitionBuilder` serializes audio content and ASR language options for the shared
+Chat Completions endpoint, and maps the transcript through `XiaomiChatCompletionResponse`. Keep
+audio wire types and future ASR options in `src/xiaomi/`; `XiaomiAudioFormat` currently supports
+WAV and MP3. Live ASR tests must remain ignored and obtain both credentials and audio input from
+environment variables rather than committed fixtures.
 
 ## Error Codes
 

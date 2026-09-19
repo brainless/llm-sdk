@@ -17,7 +17,7 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **Groq support**: Groq Chat Completions API with tool use
 - **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
 - **MixLayer support**: OpenAI-compatible Chat Completions with reasoning, tools, structured output, and hosted web search
-- **Xiaomi support**: MiMo V2.5 and MiMo V2.5 Pro through Xiaomi's OpenAI-compatible Chat Completions API
+- **Xiaomi support**: MiMo V2.5 chat models and MiMo V2.5 ASR through Xiaomi's OpenAI-compatible Chat Completions API
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
@@ -235,6 +235,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `XiaomiClient` defaults to `mimo-v2.5`. It also supports `mimo-v2.5-pro`, tool calling,
 tool results, sampling controls, stop sequences, JSON-object output, and strict JSON-schema output.
+
+MiMo V2.5 ASR is available through a provider-specific speech recognition builder on the same
+Token Plan client:
+
+```rust
+use llm_sdk::models::xiaomi::MIMO_V2_5_ASR;
+use llm_sdk::xiaomi::{XiaomiAsrLanguage, XiaomiClient};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = XiaomiClient::new("your-xiaomi-api-key")?;
+    let audio_data_url = "data:audio/wav;base64,UklGRg==";
+
+    let response = client
+        .speech_recognition_builder()
+        .model(MIMO_V2_5_ASR)
+        .audio_data_url(audio_data_url)
+        .language(XiaomiAsrLanguage::En)
+        .send()
+        .await?;
+
+    println!(
+        "Transcript: {}",
+        response.choices[0].message.content.as_deref().unwrap_or_default()
+    );
+    Ok(())
+}
+```
+
+The builder accepts `wav` and `mp3` audio, either as a complete data URL with
+`audio_data_url(...)` or as raw Base64 plus `XiaomiAudioFormat` with `audio_base64(...)`. Xiaomi
+documents a 10 MB limit for the Base64 audio input; the SDK sends the supplied input without
+enforcing that limit locally.
 
 ### OpenRouter
 
@@ -781,7 +814,9 @@ See `examples/tool_calling_*.rs` for complete examples.
 - `with_model(model: impl Into<String>) -> Self`: Set the model used by the `LlmClient` trait's `complete()`
 - `with_base_url(url: impl Into<String>) -> Self`: Set a custom API base URL
 - `message_builder() -> XiaomiMessageBuilder`: Start building a chat completion
+- `speech_recognition_builder() -> XiaomiSpeechRecognitionBuilder`: Start building a MiMo ASR request
 - `create_chat_completion(request: XiaomiChatCompletionRequest)`: Send a provider-native request
+- `create_speech_recognition(request: XiaomiSpeechRecognitionRequest)`: Send a provider-native ASR request
 
 ### MessageBuilder (Claude, Grok, GLM, OpenRouter & Xiaomi)
 
@@ -892,6 +927,10 @@ OPENROUTER_API_KEY=your-key-here cargo test --test openrouter_integration -- --i
 
 # Xiaomi MiMo integration tests
 XIAOMI_API_KEY=your-key-here cargo test --test xiaomi_integration -- --ignored
+
+# Xiaomi MiMo ASR live test (raw Base64 for a WAV file; no data-URL prefix)
+XIAOMI_API_KEY=your-key-here XIAOMI_ASR_AUDIO_BASE64=... \
+  cargo test --test xiaomi_integration test_xiaomi_mimo_v2_5_asr -- --ignored
 ```
 
 ## Examples
@@ -930,8 +969,8 @@ shared `LlmClient` completion interface.
 - **MixLayer**: OpenAI-compatible Chat Completions API
   - Features: reasoning controls, tool calling, structured output, and hosted web search
 - **Xiaomi MiMo**: OpenAI-compatible Chat Completions API
-  - Models: mimo-v2.5, mimo-v2.5-pro
-  - Features: tool calling and structured output
+  - Models: mimo-v2.5, mimo-v2.5-pro, mimo-v2.5-asr
+  - Features: tool calling, structured output, and speech recognition for WAV/MP3 audio
 - **Ollama** (Local): `/api/chat` endpoint
   - Models: local models installed in Ollama
 - **llama.cpp** (Local): OpenAI-compatible API

@@ -5,8 +5,9 @@ use crate::{
         client::XiaomiClient,
         tools::XiaomiToolFormat,
         types::{
-            XiaomiChatCompletionRequest, XiaomiChatCompletionResponse, XiaomiMessage,
-            XiaomiResponseFormat, XiaomiTool,
+            XiaomiAsrLanguage, XiaomiAsrOptions, XiaomiAudioFormat, XiaomiChatCompletionRequest,
+            XiaomiChatCompletionResponse, XiaomiInputAudio, XiaomiMessage, XiaomiResponseFormat,
+            XiaomiSpeechRecognitionMessage, XiaomiSpeechRecognitionRequest, XiaomiTool,
         },
     },
 };
@@ -141,5 +142,66 @@ impl<'a> XiaomiMessageBuilder<'a> {
             tool_choice: self.tool_choice,
         };
         self.client.create_chat_completion(request).await
+    }
+}
+
+/// Builder for a Xiaomi speech recognition request.
+pub struct XiaomiSpeechRecognitionBuilder<'a> {
+    client: &'a XiaomiClient,
+    model: Option<String>,
+    input_audio: Option<XiaomiInputAudio>,
+    language: Option<XiaomiAsrLanguage>,
+}
+
+impl<'a> XiaomiSpeechRecognitionBuilder<'a> {
+    pub fn new(client: &'a XiaomiClient) -> Self {
+        Self {
+            client,
+            model: None,
+            input_audio: None,
+            language: None,
+        }
+    }
+
+    /// Override the speech recognition model.
+    pub fn model(mut self, model: impl Into<String>) -> Self {
+        self.model = Some(model.into());
+        self
+    }
+
+    /// Set a complete provider-native audio input.
+    pub fn input_audio(mut self, input_audio: XiaomiInputAudio) -> Self {
+        self.input_audio = Some(input_audio);
+        self
+    }
+
+    /// Set audio as a data URL containing its MIME type and Base64 data.
+    pub fn audio_data_url(self, data_url: impl Into<String>) -> Self {
+        self.input_audio(XiaomiInputAudio::data_url(data_url))
+    }
+
+    /// Set raw Base64 audio data with its explicit format.
+    pub fn audio_base64(self, data: impl Into<String>, format: XiaomiAudioFormat) -> Self {
+        self.input_audio(XiaomiInputAudio::base64(data, format))
+    }
+
+    /// Set the expected audio language. Omit this to use the provider default.
+    pub fn language(mut self, language: XiaomiAsrLanguage) -> Self {
+        self.language = Some(language);
+        self
+    }
+
+    pub async fn send(self) -> Result<XiaomiChatCompletionResponse, LlmError> {
+        let input_audio = self
+            .input_audio
+            .ok_or_else(|| LlmError::invalid_request("Audio input is required"))?;
+        let request = XiaomiSpeechRecognitionRequest {
+            model: self
+                .model
+                .unwrap_or_else(|| crate::models::xiaomi::MIMO_V2_5_ASR.to_string()),
+            messages: vec![XiaomiSpeechRecognitionMessage::user(input_audio)],
+            asr_options: self.language.map(|language| XiaomiAsrOptions { language }),
+        };
+        self.client.create_speech_recognition(request).await
     }
 }

@@ -8,7 +8,8 @@ use crate::{
         tools::XiaomiToolFormat,
         types::{
             XiaomiChatCompletionRequest, XiaomiChatCompletionResponse, XiaomiFunctionCall,
-            XiaomiMessage, XiaomiResponseFormat, XiaomiRole, XiaomiToolCall,
+            XiaomiMessage, XiaomiResponseFormat, XiaomiRole, XiaomiSpeechRecognitionRequest,
+            XiaomiToolCall,
         },
     },
 };
@@ -60,10 +61,35 @@ impl XiaomiClient {
         crate::xiaomi::builder::XiaomiMessageBuilder::new(self)
     }
 
+    /// Start building a MiMo speech recognition request.
+    pub fn speech_recognition_builder(
+        &self,
+    ) -> crate::xiaomi::builder::XiaomiSpeechRecognitionBuilder<'_> {
+        crate::xiaomi::builder::XiaomiSpeechRecognitionBuilder::new(self)
+    }
+
     pub async fn create_chat_completion(
         &self,
         request: XiaomiChatCompletionRequest,
     ) -> Result<XiaomiChatCompletionResponse, LlmError> {
+        self.send_chat_completion(&request).await
+    }
+
+    /// Send a provider-native speech recognition request.
+    pub async fn create_speech_recognition(
+        &self,
+        request: XiaomiSpeechRecognitionRequest,
+    ) -> Result<XiaomiChatCompletionResponse, LlmError> {
+        self.send_chat_completion(&request).await
+    }
+
+    async fn send_chat_completion<T>(
+        &self,
+        request: &T,
+    ) -> Result<XiaomiChatCompletionResponse, LlmError>
+    where
+        T: serde::Serialize + ?Sized,
+    {
         let mut headers = HeaderMap::new();
         headers.insert(
             AUTHORIZATION,
@@ -76,7 +102,7 @@ impl XiaomiClient {
             .http_client
             .post(format!("{}/chat/completions", self.base_url))
             .headers(headers)
-            .json(&request)
+            .json(request)
             .send()
             .await
             .map_err(|source| LlmError::Network { source })?;
@@ -256,6 +282,7 @@ impl crate::client::LlmClient for XiaomiClient {
 mod tests {
     use super::*;
     use crate::client::LlmClient;
+    use crate::xiaomi::{XiaomiAsrLanguage, XiaomiAudioFormat};
 
     #[tokio::test]
     async fn sends_bearer_auth_and_maps_response() {
@@ -284,6 +311,103 @@ mod tests {
             .unwrap();
         mock.assert_async().await;
         assert_eq!(response.choices[0].message.content.as_deref(), Some("hi"));
+    }
+
+    #[tokio::test]
+    async fn sends_data_url_asr_request_with_default_model_and_language() {
+        let mut server = mockito::Server::new_async().await;
+        let mock = server
+            .mock("POST", "/chat/completions")
+            .match_header("authorization", "Bearer test-key")
+            .match_header("content-type", "application/json")
+            .match_body(mockito::Matcher::Json(serde_json::json!({
+                "model": "mimo-v2.5-asr",
+                "messages": [{
+                    "role": "user",
+                    "content": [{
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": "data:audio/wav;base64,UklGRg=="
+                        }
+                    }]
+                }],
+                "asr_options": {"language": "en"}
+            })))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"id":"asr1","object":"chat.completion","created":1,"model":"mimo-v2.5-asr","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":1,"total_tokens":5}}"#)
+            .create_async()
+            .await;
+
+        let response = XiaomiClient::new("test-key")
+            .unwrap()
+            .with_base_url(server.url())
+            .speech_recognition_builder()
+            .audio_data_url("data:audio/wav;base64,UklGRg==")
+            .language(XiaomiAsrLanguage::En)
+            .send()
+            .await
+            .unwrap();
+
+        mock.assert_async().await;
+        assert_eq!(response.model, crate::models::xiaomi::MIMO_V2_5_ASR);
+        assert_eq!(
+            response.choices[0].message.content.as_deref(),
+            Some("hello")
+        );
+    }
+
+    #[tokio::test]
+    async fn sends_raw_base64_asr_request_without_options() {
+        let mut server = mockito::Server::new_async().await;
+        let mock = server
+            .mock("POST", "/chat/completions")
+            .match_header("authorization", "Bearer test-key")
+            .match_body(mockito::Matcher::Json(serde_json::json!({
+                "model": "custom-asr",
+                "messages": [{
+                    "role": "user",
+                    "content": [{
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": "UklGRg==",
+                            "format": "wav"
+                        }
+                    }]
+                }]
+            })))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"id":"asr2","object":"chat.completion","created":1,"model":"custom-asr","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":1,"total_tokens":5}}"#)
+            .create_async()
+            .await;
+
+        XiaomiClient::new("test-key")
+            .unwrap()
+            .with_base_url(server.url())
+            .speech_recognition_builder()
+            .model("custom-asr")
+            .audio_base64("UklGRg==", XiaomiAudioFormat::Wav)
+            .send()
+            .await
+            .unwrap();
+
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn speech_recognition_requires_audio() {
+        let error = XiaomiClient::new("test-key")
+            .unwrap()
+            .speech_recognition_builder()
+            .send()
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            LlmError::InvalidRequest { message } if message == "Audio input is required"
+        ));
     }
 
     #[test]

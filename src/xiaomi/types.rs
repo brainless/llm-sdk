@@ -23,6 +23,94 @@ pub struct XiaomiChatCompletionRequest {
     pub tool_choice: Option<serde_json::Value>,
 }
 
+/// A Xiaomi speech recognition request sent through the Chat Completions API.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XiaomiSpeechRecognitionRequest {
+    pub model: String,
+    pub messages: Vec<XiaomiSpeechRecognitionMessage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asr_options: Option<XiaomiAsrOptions>,
+}
+
+/// A user message containing audio for speech recognition.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XiaomiSpeechRecognitionMessage {
+    pub role: XiaomiSpeechRecognitionRole,
+    pub content: Vec<XiaomiSpeechRecognitionContent>,
+}
+
+impl XiaomiSpeechRecognitionMessage {
+    pub fn user(input_audio: XiaomiInputAudio) -> Self {
+        Self {
+            role: XiaomiSpeechRecognitionRole::User,
+            content: vec![XiaomiSpeechRecognitionContent::InputAudio { input_audio }],
+        }
+    }
+}
+
+/// Roles accepted by Xiaomi speech recognition messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum XiaomiSpeechRecognitionRole {
+    User,
+}
+
+/// Content accepted by Xiaomi speech recognition messages.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum XiaomiSpeechRecognitionContent {
+    InputAudio { input_audio: XiaomiInputAudio },
+}
+
+/// Audio input represented as either a data URL or raw Base64 data.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XiaomiInputAudio {
+    pub data: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<XiaomiAudioFormat>,
+}
+
+impl XiaomiInputAudio {
+    /// Create audio input from a data URL containing its MIME type.
+    pub fn data_url(data: impl Into<String>) -> Self {
+        Self {
+            data: data.into(),
+            format: None,
+        }
+    }
+
+    /// Create audio input from raw Base64 data and its explicit format.
+    pub fn base64(data: impl Into<String>, format: XiaomiAudioFormat) -> Self {
+        Self {
+            data: data.into(),
+            format: Some(format),
+        }
+    }
+}
+
+/// Audio formats accepted by Xiaomi speech recognition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum XiaomiAudioFormat {
+    Mp3,
+    Wav,
+}
+
+/// Provider-specific speech recognition options.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XiaomiAsrOptions {
+    pub language: XiaomiAsrLanguage,
+}
+
+/// Languages accepted by Xiaomi speech recognition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum XiaomiAsrLanguage {
+    Auto,
+    Zh,
+    En,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XiaomiMessage {
     pub role: XiaomiRole,
@@ -198,6 +286,62 @@ mod tests {
         assert_eq!(json["model"], "mimo-v2.5");
         assert_eq!(json["max_completion_tokens"], 100);
         assert!(json.get("max_tokens").is_none());
+    }
+
+    #[test]
+    fn serializes_speech_recognition_request_with_data_url() {
+        let request = XiaomiSpeechRecognitionRequest {
+            model: crate::models::xiaomi::MIMO_V2_5_ASR.into(),
+            messages: vec![XiaomiSpeechRecognitionMessage::user(
+                XiaomiInputAudio::data_url("data:audio/wav;base64,UklGRg=="),
+            )],
+            asr_options: Some(XiaomiAsrOptions {
+                language: XiaomiAsrLanguage::En,
+            }),
+        };
+
+        assert_eq!(
+            serde_json::to_value(request).unwrap(),
+            serde_json::json!({
+                "model": "mimo-v2.5-asr",
+                "messages": [{
+                    "role": "user",
+                    "content": [{
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": "data:audio/wav;base64,UklGRg=="
+                        }
+                    }]
+                }],
+                "asr_options": {
+                    "language": "en"
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn serializes_speech_recognition_request_with_raw_base64() {
+        let request = XiaomiSpeechRecognitionRequest {
+            model: crate::models::xiaomi::MIMO_V2_5_ASR.into(),
+            messages: vec![XiaomiSpeechRecognitionMessage::user(
+                XiaomiInputAudio::base64("UklGRg==", XiaomiAudioFormat::Wav),
+            )],
+            asr_options: Some(XiaomiAsrOptions {
+                language: XiaomiAsrLanguage::Auto,
+            }),
+        };
+
+        let json = serde_json::to_value(request).unwrap();
+        assert_eq!(
+            json["messages"][0]["content"][0]["input_audio"]["data"],
+            "UklGRg=="
+        );
+        assert_eq!(
+            json["messages"][0]["content"][0]["input_audio"]["format"],
+            "wav"
+        );
+        assert_eq!(json["asr_options"]["language"], "auto");
     }
 
     #[test]

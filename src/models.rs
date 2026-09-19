@@ -297,9 +297,14 @@ pub mod xiaomi {
     pub const MIMO_V2_5_PRO_ID: &str = "mimo-v2.5-pro";
     pub const MIMO_V2_5_PRO_NAME: &str = "MiMo V2.5 Pro";
 
+    /// MiMo V2.5 ASR — Xiaomi's automatic speech recognition model
+    pub const MIMO_V2_5_ASR_ID: &str = "mimo-v2.5-asr";
+    pub const MIMO_V2_5_ASR_NAME: &str = "MiMo V2.5 ASR";
+
     // Shorthand aliases
     pub const MIMO_V2_5: &str = MIMO_V2_5_ID;
     pub const MIMO_V2_5_PRO: &str = MIMO_V2_5_PRO_ID;
+    pub const MIMO_V2_5_ASR: &str = MIMO_V2_5_ASR_ID;
 }
 
 /// OpenCode Zen free model constants

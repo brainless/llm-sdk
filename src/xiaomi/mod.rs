@@ -7,7 +7,7 @@ pub mod client;
 pub mod tools;
 pub mod types;
 
-pub use builder::XiaomiMessageBuilder;
+pub use builder::{XiaomiMessageBuilder, XiaomiSpeechRecognitionBuilder};
 pub use client::XiaomiClient;
 pub use tools::XiaomiToolFormat;
 pub use types::*;

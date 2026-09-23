@@ -289,6 +289,14 @@ pub mod llama_cpp {
 
 /// Xiaomi MiMo model constants
 pub mod xiaomi {
+    /// MiMo V2.6 Pro — Xiaomi's flagship reasoning model
+    pub const MIMO_V2_6_PRO_ID: &str = "mimo-v2.6-pro";
+    pub const MIMO_V2_6_PRO_NAME: &str = "MiMo-V2.6-Pro";
+
+    /// MiMo V2.6 Flash — Xiaomi's efficient reasoning model
+    pub const MIMO_V2_6_FLASH_ID: &str = "mimo-v2.6-flash";
+    pub const MIMO_V2_6_FLASH_NAME: &str = "MiMo-V2.6-Flash";
+
     /// MiMo V2.5 — Xiaomi's base reasoning model
     pub const MIMO_V2_5_ID: &str = "mimo-v2.5";
     pub const MIMO_V2_5_NAME: &str = "MiMo V2.5";
@@ -302,6 +310,8 @@ pub mod xiaomi {
     pub const MIMO_V2_5_ASR_NAME: &str = "MiMo V2.5 ASR";
 
     // Shorthand aliases
+    pub const MIMO_V2_6_PRO: &str = MIMO_V2_6_PRO_ID;
+    pub const MIMO_V2_6_FLASH: &str = MIMO_V2_6_FLASH_ID;
     pub const MIMO_V2_5: &str = MIMO_V2_5_ID;
     pub const MIMO_V2_5_PRO: &str = MIMO_V2_5_PRO_ID;
     pub const MIMO_V2_5_ASR: &str = MIMO_V2_5_ASR_ID;

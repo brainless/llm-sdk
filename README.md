@@ -17,7 +17,7 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **Groq support**: Groq Chat Completions API with tool use
 - **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
 - **MixLayer support**: OpenAI-compatible Chat Completions with reasoning, tools, structured output, and hosted web search
-- **Xiaomi support**: MiMo V2.5 chat models and MiMo V2.5 ASR through Xiaomi's OpenAI-compatible Chat Completions API
+- **Xiaomi support**: MiMo V2.6 and V2.5 chat models and MiMo V2.5 ASR through Xiaomi's OpenAI-compatible Chat Completions API
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
@@ -233,7 +233,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`XiaomiClient` defaults to `mimo-v2.5`. It also supports `mimo-v2.5-pro`, tool calling,
+`XiaomiClient` defaults to `mimo-v2.5`. Select `MIMO_V2_6_PRO` or `MIMO_V2_6_FLASH`
+with `.model(...)` to use the newer chat models. It also supports `mimo-v2.5-pro`, tool calling,
 tool results, sampling controls, stop sequences, JSON-object output, and strict JSON-schema output.
 
 MiMo V2.5 ASR is available through a provider-specific speech recognition builder on the same
@@ -969,7 +970,7 @@ shared `LlmClient` completion interface.
 - **MixLayer**: OpenAI-compatible Chat Completions API
   - Features: reasoning controls, tool calling, structured output, and hosted web search
 - **Xiaomi MiMo**: OpenAI-compatible Chat Completions API
-  - Models: mimo-v2.5, mimo-v2.5-pro, mimo-v2.5-asr
+  - Models: mimo-v2.6-pro, mimo-v2.6-flash, mimo-v2.5, mimo-v2.5-pro, mimo-v2.5-asr
   - Features: tool calling, structured output, and speech recognition for WAV/MP3 audio
 - **Ollama** (Local): `/api/chat` endpoint
   - Models: local models installed in Ollama

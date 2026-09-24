@@ -52,6 +52,11 @@ cargo test --workspace
 cargo clippy --workspace --all-targets --no-deps -- -D warnings
 ```
 
+If a build fails with `sccache: error: Operation not permitted` after a toolchain or dependency
+change, remove the stale Cargo probe cache with `rm target/.rustc_info.json` and retry. If the
+wrapper still fails, run that check with `RUSTC_WRAPPER=` as a temporary workaround. Do not remove
+the whole `target/` directory just for this error.
+
 Use `cargo check --all-features` when changing feature-gated code. Do not run ignored integration
 tests unless the required API key is available and live provider calls are explicitly intended.
 

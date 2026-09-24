@@ -127,6 +127,7 @@
 pub mod cerebras;
 pub mod claude;
 pub mod client;
+pub mod elevenlabs;
 pub mod error;
 pub mod gemini;
 pub mod glm;
@@ -148,6 +149,7 @@ pub mod zen;
 
 // Provider-specific exports
 pub use cerebras::CerebrasClient;
+pub use elevenlabs::ElevenLabsClient;
 pub use gemini::GeminiClient;
 #[deprecated(since = "0.2.0", note = "Use cerebras::CerebrasClient")]
 pub use glm::cerebras::CerebrasGlmClient;

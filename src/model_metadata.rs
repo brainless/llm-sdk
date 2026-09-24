@@ -26,6 +26,37 @@ pub struct ModelMetadata {
 /// Get all supported models with their metadata
 pub fn get_all_models() -> Vec<ModelMetadata> {
     vec![
+        // Scribe uses audio duration billing rather than token pricing.
+        ModelMetadata {
+            provider: providers::ELEVENLABS,
+            model_id: models::elevenlabs::SCRIBE_V2_ID,
+            name: models::elevenlabs::SCRIBE_V2_NAME,
+            context_length: 0,
+            supports_streaming: false,
+            supports_tool_calling: false,
+            supports_vision: false,
+            supports_reasoning: false,
+            input_cost_per_token: None,
+            output_cost_per_token: None,
+            default_temperature: None,
+            default_max_tokens: None,
+            default_thinking_level: None,
+        },
+        ModelMetadata {
+            provider: providers::ELEVENLABS,
+            model_id: models::elevenlabs::SCRIBE_V2_MEDICAL_ID,
+            name: models::elevenlabs::SCRIBE_V2_MEDICAL_NAME,
+            context_length: 0,
+            supports_streaming: false,
+            supports_tool_calling: false,
+            supports_vision: false,
+            supports_reasoning: false,
+            input_cost_per_token: None,
+            output_cost_per_token: None,
+            default_temperature: None,
+            default_max_tokens: None,
+            default_thinking_level: None,
+        },
         // Claude models
         ModelMetadata {
             provider: providers::ANTHROPIC,

@@ -18,6 +18,7 @@ A general-purpose LLM SDK for Rust with support for multiple LLM providers.
 - **OpenRouter support**: Multi-model proxy with runtime discovery of free programming models
 - **MixLayer support**: OpenAI-compatible Chat Completions with reasoning, tools, structured output, and hosted web search
 - **Xiaomi support**: MiMo V2.6 and V2.5 chat models and MiMo V2.5 ASR through Xiaomi's OpenAI-compatible Chat Completions API
+- **ElevenLabs support**: Scribe v2 and Scribe v2 Medical batch speech-to-text transcription from files or source URLs
 - **Ollama support**: Local models via Ollama `/api/chat`
 - **llama.cpp support**: Local models via OpenAI-compatible API
 - **Zen provider**: Free access to select models during beta
@@ -269,6 +270,41 @@ The builder accepts `wav` and `mp3` audio, either as a complete data URL with
 `audio_data_url(...)` or as raw Base64 plus `XiaomiAudioFormat` with `audio_base64(...)`. Xiaomi
 documents a 10 MB limit for the Base64 audio input; the SDK sends the supplied input without
 enforcing that limit locally.
+
+### ElevenLabs Scribe v2
+
+Use `ElevenLabsClient` for batch speech-to-text transcription. The provider and model constants
+are `providers::ELEVENLABS`, `models::elevenlabs::SCRIBE_V2_ID`, and
+`models::elevenlabs::SCRIBE_V2_NAME`. For clinical audio, set `request.model_id` to
+`models::elevenlabs::SCRIBE_V2_MEDICAL_ID`; its label is `SCRIBE_V2_MEDICAL_NAME`. Regional API
+hosts can be selected with `with_base_url`.
+
+```rust,no_run
+use llm_sdk::elevenlabs::{ElevenLabsClient, TranscriptionRequest, TranscriptionResult};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = ElevenLabsClient::new("your-elevenlabs-api-key")?;
+    let audio = std::fs::read("meeting.mp3")?;
+    let mut request = TranscriptionRequest::file(audio, "meeting.mp3");
+    request.diarize = Some(true);
+    request.language_code = Some("en".into());
+
+    match client.transcribe(request).await? {
+        TranscriptionResult::Transcript(transcript) => println!("{}", transcript.text),
+        TranscriptionResult::Multichannel(result) => {
+            for channel in result.transcripts {
+                println!("{}", channel.text);
+            }
+        }
+        TranscriptionResult::Accepted(result) => println!("Queued: {}", result.request_id),
+    }
+    Ok(())
+}
+```
+
+For hosted media, use `TranscriptionRequest::source_url(url)`. Set `webhook = Some(true)` to
+receive an asynchronous acceptance response.
 
 ### OpenRouter
 

@@ -40,3 +40,6 @@ pub const MIXLAYER: &str = "mixlayer";
 
 /// Xiaomi (MiMo) provider
 pub const XIAOMI: &str = "xiaomi";
+
+/// ElevenLabs speech-to-text provider
+pub const ELEVENLABS: &str = "elevenlabs";

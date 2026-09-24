@@ -185,6 +185,12 @@ audio wire types and future ASR options in `src/xiaomi/`; `XiaomiAudioFormat` cu
 WAV and MP3. Live ASR tests must remain ignored and obtain both credentials and audio input from
 environment variables rather than committed fixtures.
 
+ElevenLabs Scribe v2 and Scribe v2 Medical batch transcription are also provider-specific. `ElevenLabsClient::transcribe`
+builds a multipart request for file bytes or a hosted source URL and returns a transcript,
+separate multichannel transcripts, or a webhook acceptance. Keep its wire types and multipart
+options in `src/elevenlabs/`. Mock tests cover encoding, response mapping, and sanitized HTTP
+errors; live calls require an API key and explicit intent.
+
 ## Error Codes
 
 - `Authentication` - HTTP 401

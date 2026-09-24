@@ -3,6 +3,19 @@
 //! This module contains official model IDs and human-readable names for all supported providers.
 //! Model IDs are sourced from official provider documentation.
 
+/// ElevenLabs speech-to-text model constants.
+pub mod elevenlabs {
+    /// Scribe v2 batch transcription model.
+    pub const SCRIBE_V2_ID: &str = "scribe_v2";
+    pub const SCRIBE_V2_NAME: &str = "Scribe v2";
+    pub const SCRIBE_V2: &str = SCRIBE_V2_ID;
+
+    /// Scribe v2 Medical batch transcription model.
+    pub const SCRIBE_V2_MEDICAL_ID: &str = "scribe_v2_medical";
+    pub const SCRIBE_V2_MEDICAL_NAME: &str = "Scribe v2 Medical";
+    pub const SCRIBE_V2_MEDICAL: &str = SCRIBE_V2_MEDICAL_ID;
+}
+
 /// Claude model constants
 pub mod claude {
     /// Claude Sonnet 4.5 - Smart model for complex agents and coding

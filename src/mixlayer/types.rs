@@ -322,6 +322,34 @@ mod tests {
     }
 
     #[test]
+    fn serializes_thinking_false_to_disable_thinking() {
+        let request = MixlayerChatCompletionRequest {
+            model: "test/model".into(),
+            messages: vec![MixlayerMessage::user("hello")],
+            max_completion_tokens: None,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            repetition_penalty: None,
+            stop: None,
+            seed: None,
+            reasoning_effort: None,
+            thinking: Some(false),
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            web_search_options: None,
+            metadata: None,
+            store: None,
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert_eq!(json["thinking"], false);
+    }
+
+    #[test]
     fn deserializes_reasoning_sources_and_usage_details() {
         let raw = r#"{"id":"c1","object":"chat.completion","created":1,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"answer","reasoning_content":"thought","sources":[{"title":"Docs","url":"https://example.com"}]},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":1},"server_tool_use":{"web_search":1}}}"#;
         let response: MixlayerChatCompletionResponse = serde_json::from_str(raw).unwrap();

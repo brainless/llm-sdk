@@ -21,6 +21,36 @@ pub struct XiaomiChatCompletionRequest {
     pub tools: Option<Vec<XiaomiTool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<XiaomiThinking>,
+}
+
+/// Request-level control over Xiaomi's extended thinking.
+///
+/// Xiaomi's MiMo models think by default; sending `{"type": "disabled"}`
+/// turns that off for the request. See the [passing back reasoning_content]
+/// guide for the wire format.
+///
+/// [passing back reasoning_content]: https://platform.xiaomimimo.com/docs/en-US/usage-guide/passing-back-reasoning_content
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XiaomiThinking {
+    #[serde(rename = "type")]
+    pub thinking_type: XiaomiThinkingType,
+}
+
+impl XiaomiThinking {
+    /// Disable extended thinking for the request.
+    pub fn disabled() -> Self {
+        Self {
+            thinking_type: XiaomiThinkingType::Disabled,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum XiaomiThinkingType {
+    Disabled,
 }
 
 /// A Xiaomi speech recognition request sent through the Chat Completions API.
@@ -281,11 +311,32 @@ mod tests {
             response_format: None,
             tools: None,
             tool_choice: None,
+            thinking: None,
         };
         let json = serde_json::to_value(request).unwrap();
         assert_eq!(json["model"], "mimo-v2.5");
         assert_eq!(json["max_completion_tokens"], 100);
         assert!(json.get("max_tokens").is_none());
+        assert!(json.get("thinking").is_none());
+    }
+
+    #[test]
+    fn serializes_disabled_thinking() {
+        let request = XiaomiChatCompletionRequest {
+            model: "mimo-v2.5-pro".into(),
+            messages: vec![XiaomiMessage::user("hello")],
+            max_completion_tokens: None,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            thinking: Some(XiaomiThinking::disabled()),
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert_eq!(json["thinking"], serde_json::json!({"type": "disabled"}));
     }
 
     #[test]

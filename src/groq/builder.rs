@@ -104,9 +104,16 @@ impl<'a> GroqMessageBuilder<'a> {
     }
 
     /// Set reasoning effort for gpt-oss models. Values: "low", "medium" (default), "high".
+    /// Qwen3 models additionally accept "none" to disable reasoning.
     pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
         self.reasoning_effort = Some(effort.into());
         self
+    }
+
+    /// Disable reasoning for this request (Qwen3 models). Equivalent to
+    /// `.reasoning_effort("none")`.
+    pub fn disable_thinking(self) -> Self {
+        self.reasoning_effort("none")
     }
 
     pub fn tool(mut self, tool: Tool) -> Self {

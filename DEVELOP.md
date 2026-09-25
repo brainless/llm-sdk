@@ -4,7 +4,7 @@
 
 A multi-provider LLM SDK for Rust with trait-based architecture supporting Claude, Gemini, Grok, GLM, Groq, OpenRouter, MixLayer, Xiaomi MiMo, Ollama, llama.cpp, OpenAI, and Voyage AI.
 
-**Crate**: `llm-sdk` v0.1.12
+**Crate**: `llm-sdk` v0.1.13
 
 **Edition**: 2021
 
@@ -190,6 +190,36 @@ builds a multipart request for file bytes or a hosted source URL and returns a t
 separate multichannel transcripts, or a webhook acceptance. Keep its wire types and multipart
 options in `src/elevenlabs/`. Mock tests cover encoding, response mapping, and sanitized HTTP
 errors; live calls require an API key and explicit intent.
+
+## Disabling Extended Thinking / Reasoning
+
+Where the underlying API supports turning reasoning off for a request, the provider's message
+builder exposes a `.disable_thinking()` method as the consistent entry point, on top of whatever
+typed field that provider already uses for reasoning control. The wire representation is
+provider-native and intentionally not unified:
+
+- **Xiaomi** (`XiaomiMessageBuilder::disable_thinking`): sends `thinking: {"type": "disabled"}`
+  (`XiaomiThinking`/`XiaomiThinkingType` in `src/xiaomi/types.rs`). MiMo models think by default,
+  which can add several minutes of latency and occasionally return empty content.
+- **MixLayer** (`.disable_thinking()`): sugar over the existing `.thinking(false)` (`thinking:
+  Option<bool>`).
+- **Ollama** (`.disable_thinking()`): sugar over the existing `.think(OllamaThink::Bool(false))`.
+- **Groq**, **GLM** (and Cerebras, which reuses the GLM builder as `CerebrasMessageBuilder`)
+  (`.disable_thinking()`): sugar over `.reasoning_effort("none")`, the existing
+  `reasoning_effort: Option<String>` field. Model support for `"none"` varies (documented for
+  Qwen3 on Groq and zai-glm-4.7 on GLM/Cerebras) — sending it to a model that doesn't support it
+  is a provider-side error, not an SDK one.
+- **OpenRouter** (`.disable_thinking()`): sends `reasoning: {"enabled": false}` via the new
+  `OpenRouterReasoning` type, which also carries `.reasoning_effort(...)` and `.max_tokens`.
+  Models where reasoning is mandatory reject `enabled: false`.
+
+Skipped: **Claude** (this SDK does not expose extended thinking at all, so there is nothing to
+disable — thinking is opt-in and off by default), **Grok/xAI** (`reasoning_effort` only accepts
+`"low"`/`"high"` on `grok-3-mini`; no documented disable value), **Gemini 3** (`thinking_level`
+only accepts named levels like `"low"`/`"high"`/`"minimal"`; no documented "off" level for
+Gemini 3, and the legacy `thinking_budget` field is a different, deprecated control), and
+**OpenAI** (no documented request-level reasoning-disable field for the Responses API in this
+repo's reference docs).
 
 ## Error Codes
 

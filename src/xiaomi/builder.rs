@@ -7,7 +7,8 @@ use crate::{
         types::{
             XiaomiAsrLanguage, XiaomiAsrOptions, XiaomiAudioFormat, XiaomiChatCompletionRequest,
             XiaomiChatCompletionResponse, XiaomiInputAudio, XiaomiMessage, XiaomiResponseFormat,
-            XiaomiSpeechRecognitionMessage, XiaomiSpeechRecognitionRequest, XiaomiTool,
+            XiaomiSpeechRecognitionMessage, XiaomiSpeechRecognitionRequest, XiaomiThinking,
+            XiaomiTool,
         },
     },
 };
@@ -25,6 +26,7 @@ pub struct XiaomiMessageBuilder<'a> {
     response_format: Option<XiaomiResponseFormat>,
     tools: Option<Vec<XiaomiTool>>,
     tool_choice: Option<serde_json::Value>,
+    thinking: Option<XiaomiThinking>,
 }
 
 impl<'a> XiaomiMessageBuilder<'a> {
@@ -41,6 +43,7 @@ impl<'a> XiaomiMessageBuilder<'a> {
             response_format: None,
             tools: None,
             tool_choice: None,
+            thinking: None,
         }
     }
 
@@ -126,6 +129,15 @@ impl<'a> XiaomiMessageBuilder<'a> {
         self
     }
 
+    /// Disable extended thinking for this request (`thinking: {"type": "disabled"}`).
+    ///
+    /// MiMo models think by default, which can add several minutes of latency
+    /// and occasionally return empty content; call this to opt out.
+    pub fn disable_thinking(mut self) -> Self {
+        self.thinking = Some(XiaomiThinking::disabled());
+        self
+    }
+
     pub async fn send(self) -> Result<XiaomiChatCompletionResponse, LlmError> {
         let request = XiaomiChatCompletionRequest {
             model: self
@@ -140,6 +152,7 @@ impl<'a> XiaomiMessageBuilder<'a> {
             response_format: self.response_format,
             tools: self.tools,
             tool_choice: self.tool_choice,
+            thinking: self.thinking,
         };
         self.client.create_chat_completion(request).await
     }

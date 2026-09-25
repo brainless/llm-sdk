@@ -242,6 +242,7 @@ impl crate::client::LlmClient for XiaomiClient {
                 response_format,
                 tools,
                 tool_choice,
+                thinking: None,
             })
             .await?;
         let choice = response

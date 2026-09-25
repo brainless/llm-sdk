@@ -325,6 +325,7 @@ impl crate::client::LlmClient for OpenRouterClient {
             tool_choice,
             response_format,
             provider: self.provider_preferences.clone(),
+            reasoning: None,
         };
 
         let or_response = self.create_chat_completion(or_request).await?;
@@ -413,6 +414,7 @@ mod tests {
                 data_collection: Some(crate::openrouter::types::OpenRouterDataCollection::Deny),
                 zdr: Some(true),
             }),
+            reasoning: None,
         };
 
         let result = client

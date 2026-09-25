@@ -207,6 +207,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+`CerebrasMessageBuilder` (and the underlying `GlmMessageBuilder`, used directly by GLM/zAI and
+Groq clients) supports `.reasoning_effort(...)` and `.disable_thinking()` (sugar for
+`.reasoning_effort("none")`). Model support for `"none"` varies — it's documented for
+`zai-glm-4.7` on Cerebras/zAI and Qwen3 models on Groq.
+
 ### Xiaomi MiMo
 
 ```rust
@@ -237,6 +242,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 `XiaomiClient` defaults to `mimo-v2.5`. Select `MIMO_V2_6_PRO` or `MIMO_V2_6_FLASH`
 with `.model(...)` to use the newer chat models. It also supports `mimo-v2.5-pro`, tool calling,
 tool results, sampling controls, stop sequences, JSON-object output, and strict JSON-schema output.
+
+MiMo models think by default, which can add significant latency and occasionally return empty
+content. Call `.disable_thinking()` on the message builder to send `thinking: {"type": "disabled"}`
+and skip extended reasoning for a request:
+
+```rust,no_run
+# use llm_sdk::models::xiaomi::MIMO_V2_5_PRO;
+# use llm_sdk::xiaomi::XiaomiClient;
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+# let client = XiaomiClient::new("your-xiaomi-api-key")?;
+let response = client
+    .message_builder()
+    .model(MIMO_V2_5_PRO)
+    .user_message("What is 2 + 2?")
+    .disable_thinking()
+    .send()
+    .await?;
+# Ok(())
+# }
+```
 
 MiMo V2.5 ASR is available through a provider-specific speech recognition builder on the same
 Token Plan client:
@@ -338,6 +363,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+The builder also supports `.reasoning_effort(...)` and `.disable_thinking()`, which sends
+`reasoning: {"enabled": false}` for models that let the caller turn reasoning off. Models where
+reasoning is mandatory reject `enabled: false`.
+
 ### Ollama (Local)
 
 ```rust
@@ -359,6 +388,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+Use `.think(OllamaThink::Level("high".into()))` for models with graded thinking, or
+`.disable_thinking()` (sugar over `.think(OllamaThink::Bool(false))`) to turn thinking off.
 
 ### MixLayer
 
@@ -388,6 +420,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 The provider-specific builder also supports `reasoning_effort`, `thinking`, sampling penalties,
 strict JSON-schema output, tool calling, metadata/storage controls, and `web_search_options`.
+Call `.disable_thinking()` (sugar over `.thinking(false)`) to turn extended thinking off for a
+request.
 
 ### llama.cpp (Local)
 

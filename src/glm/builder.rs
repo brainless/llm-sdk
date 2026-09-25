@@ -153,9 +153,16 @@ impl<'a, T: GlmClientTrait> GlmMessageBuilder<'a, T> {
     }
 
     /// Set reasoning effort for gpt-oss-120b and zai-glm-4.7. Values: "low", "medium", "high".
+    /// zai-glm-4.7 additionally accepts "none" to disable reasoning entirely.
     pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
         self.reasoning_effort = Some(effort.into());
         self
+    }
+
+    /// Disable reasoning for this request (zai-glm-4.7). Equivalent to
+    /// `.reasoning_effort("none")`.
+    pub fn disable_thinking(self) -> Self {
+        self.reasoning_effort("none")
     }
 
     /// Set seed for deterministic sampling

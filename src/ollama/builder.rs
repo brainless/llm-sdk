@@ -190,6 +190,11 @@ impl<'a> OllamaMessageBuilder<'a> {
         self
     }
 
+    /// Disable thinking output for this request. Equivalent to `.think(OllamaThink::Bool(false))`.
+    pub fn disable_thinking(self) -> Self {
+        self.think(OllamaThink::Bool(false))
+    }
+
     /// Set keep-alive duration
     pub fn keep_alive(mut self, keep_alive: OllamaKeepAlive) -> Self {
         self.keep_alive = Some(keep_alive);

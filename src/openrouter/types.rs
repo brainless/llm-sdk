@@ -25,6 +25,33 @@ pub struct OpenRouterChatCompletionRequest {
     pub response_format: Option<OpenRouterResponseFormat>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<OpenRouterProviderPreferences>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<OpenRouterReasoning>,
+}
+
+/// Reasoning/thinking controls for a chat completion, forwarded to the
+/// underlying model by OpenRouter's unified `reasoning` request field.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct OpenRouterReasoning {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+}
+
+impl OpenRouterReasoning {
+    /// Disable reasoning for this request (`reasoning: {"enabled": false}`).
+    ///
+    /// Models where reasoning is mandatory reject this; omit `reasoning`
+    /// entirely for those instead.
+    pub fn disabled() -> Self {
+        Self {
+            enabled: Some(false),
+            ..Default::default()
+        }
+    }
 }
 
 /// OpenRouter provider-routing preferences for a chat completion.
@@ -277,6 +304,7 @@ mod tests {
                 data_collection: Some(OpenRouterDataCollection::Deny),
                 zdr: Some(true),
             }),
+            reasoning: None,
         };
 
         let value = serde_json::to_value(request).unwrap();
@@ -308,6 +336,7 @@ mod tests {
             tool_choice: None,
             response_format: None,
             provider: None,
+            reasoning: None,
         };
 
         assert!(serde_json::to_value(request)
@@ -351,6 +380,7 @@ mod tests {
                 schema.clone(),
             )),
             provider: None,
+            reasoning: None,
         };
 
         let value = serde_json::to_value(request).unwrap();
@@ -365,6 +395,50 @@ mod tests {
                 }
             })
         );
+    }
+
+    #[test]
+    fn disabled_reasoning_serializes_enabled_false() {
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![OpenRouterMessage::user("hello")],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            provider: None,
+            reasoning: Some(OpenRouterReasoning::disabled()),
+        };
+
+        let value = serde_json::to_value(request).unwrap();
+        assert_eq!(value["reasoning"], serde_json::json!({"enabled": false}));
+    }
+
+    #[test]
+    fn absent_reasoning_remains_omitted() {
+        let request = OpenRouterChatCompletionRequest {
+            model: "author/model".into(),
+            messages: vec![],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            provider: None,
+            reasoning: None,
+        };
+
+        assert!(serde_json::to_value(request)
+            .unwrap()
+            .get("reasoning")
+            .is_none());
     }
 
     #[test]

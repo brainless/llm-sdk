@@ -151,6 +151,10 @@ impl<'a> MixlayerMessageBuilder<'a> {
         self.thinking = Some(value);
         self
     }
+    /// Disable extended thinking for this request. Equivalent to `.thinking(false)`.
+    pub fn disable_thinking(self) -> Self {
+        self.thinking(false)
+    }
     pub fn response_format(mut self, value: MixlayerResponseFormat) -> Self {
         self.response_format = Some(value);
         self

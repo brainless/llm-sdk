@@ -241,3 +241,44 @@ pub struct OllamaPullStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completed: Option<u64>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_think_bool_false_to_disable_thinking() {
+        let request = OllamaChatRequest {
+            model: "deepseek-r1".into(),
+            messages: vec![OllamaMessage::new(OllamaRole::User, "hello")],
+            tools: None,
+            format: None,
+            options: None,
+            stream: None,
+            think: Some(OllamaThink::Bool(false)),
+            keep_alive: None,
+            logprobs: None,
+            top_logprobs: None,
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert_eq!(json["think"], false);
+    }
+
+    #[test]
+    fn omits_think_when_unset() {
+        let request = OllamaChatRequest {
+            model: "deepseek-r1".into(),
+            messages: vec![OllamaMessage::new(OllamaRole::User, "hello")],
+            tools: None,
+            format: None,
+            options: None,
+            stream: None,
+            think: None,
+            keep_alive: None,
+            logprobs: None,
+            top_logprobs: None,
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert!(json.get("think").is_none());
+    }
+}

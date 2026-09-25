@@ -235,3 +235,48 @@ impl GlmMessage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_reasoning_effort_none_to_disable_reasoning() {
+        let request = GlmChatCompletionRequest {
+            model: "zai-glm-4.7".into(),
+            messages: vec![GlmMessage::user("hello")],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            reasoning_effort: Some("none".into()),
+            seed: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert_eq!(json["reasoning_effort"], "none");
+    }
+
+    #[test]
+    fn omits_reasoning_effort_when_unset() {
+        let request = GlmChatCompletionRequest {
+            model: "zai-glm-4.7".into(),
+            messages: vec![GlmMessage::user("hello")],
+            max_completion_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            stream: None,
+            reasoning_effort: None,
+            seed: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+        };
+        let json = serde_json::to_value(request).unwrap();
+        assert!(json.get("reasoning_effort").is_none());
+    }
+}

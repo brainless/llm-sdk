@@ -5,8 +5,8 @@ use crate::{
         tools::OpenRouterToolFormat,
         types::{
             OpenRouterChatCompletionRequest, OpenRouterChatCompletionResponse, OpenRouterMessage,
-            OpenRouterProviderPreferences, OpenRouterResponseFormat, OpenRouterRole,
-            OpenRouterTool,
+            OpenRouterProviderPreferences, OpenRouterReasoning, OpenRouterResponseFormat,
+            OpenRouterRole, OpenRouterTool,
         },
     },
     tools::{ProviderToolFormat, Tool, ToolChoice, ToolResult},
@@ -24,6 +24,7 @@ pub struct OpenRouterMessageBuilder<'a> {
     tool_choice: Option<serde_json::Value>,
     response_format: Option<OpenRouterResponseFormat>,
     provider_preferences: Option<OpenRouterProviderPreferences>,
+    reasoning: Option<OpenRouterReasoning>,
 }
 
 impl<'a> OpenRouterMessageBuilder<'a> {
@@ -40,6 +41,7 @@ impl<'a> OpenRouterMessageBuilder<'a> {
             tool_choice: None,
             response_format: None,
             provider_preferences: None,
+            reasoning: None,
         }
     }
 
@@ -137,6 +139,28 @@ impl<'a> OpenRouterMessageBuilder<'a> {
         self
     }
 
+    /// Set reasoning/thinking controls, forwarded to the underlying model.
+    pub fn reasoning(mut self, reasoning: OpenRouterReasoning) -> Self {
+        self.reasoning = Some(reasoning);
+        self
+    }
+
+    /// Set reasoning effort. Accepted values depend on the underlying model.
+    pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
+        let mut reasoning = self.reasoning.unwrap_or_default();
+        reasoning.effort = Some(effort.into());
+        self.reasoning = Some(reasoning);
+        self
+    }
+
+    /// Disable reasoning for this request (`reasoning: {"enabled": false}`).
+    ///
+    /// Models where reasoning is mandatory reject this.
+    pub fn disable_thinking(mut self) -> Self {
+        self.reasoning = Some(OpenRouterReasoning::disabled());
+        self
+    }
+
     pub fn tool_result(mut self, result: ToolResult) -> Self {
         self.messages.push(OpenRouterMessage::tool_result(
             result.tool_call_id(),
@@ -160,6 +184,7 @@ impl<'a> OpenRouterMessageBuilder<'a> {
             tool_choice: self.tool_choice,
             response_format: self.response_format,
             provider: self.provider_preferences,
+            reasoning: self.reasoning,
         };
 
         self.client.create_chat_completion(request).await
